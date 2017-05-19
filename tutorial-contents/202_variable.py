@@ -22,13 +22,18 @@ print(variable)     # [torch.FloatTensor of size 2x2]
 # However, the variable is a part of the graph, it's a part of the auto-gradient.
 
 t_out = torch.mean(tensor*tensor)       # x^2
+
+# do operation with Variable
 v_out = torch.mean(variable*variable)   # x^2
 print(t_out)
 print(v_out)    # 7.5
 
+# to do backward(), v_out must be a scalar
 v_out.backward()    # backpropagation from v_out
 # v_out = 1/4 * sum(variable*variable)
 # the gradients w.r.t the variable, d(v_out)/d(variable) = 1/4*2*variable = variable/2
+
+# variable.grad: see gradients or weights 
 print(variable.grad)
 '''
  0.5000  1.0000
@@ -42,14 +47,14 @@ Variable containing:
  3  4
 [torch.FloatTensor of size 2x2]
 """
-
+# access tensor from Variable
 print(variable.data)    # this is data in tensor format
 """
  1  2
  3  4
 [torch.FloatTensor of size 2x2]
 """
-
+# access numpy array from pytorch tensor
 print(variable.data.numpy())    # numpy format
 """
 [[ 1.  2.]
