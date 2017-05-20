@@ -12,17 +12,20 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-torch.manual_seed(1)    # reproducible
+# reproducible
+torch.manual_seed(1)
 
+# Hyper parameters
 LR = 0.01
 BATCH_SIZE = 32
 EPOCH = 12
 
-# fake dataset
+# tensor size (1000, 1)
 x = torch.unsqueeze(torch.linspace(-1, 1, 1000), dim=1)
+# make random y tensor
 y = x.pow(2) + 0.1*torch.normal(torch.zeros(*x.size()))
 
-# plot dataset
+# plot dataset x, y
 plt.scatter(x.numpy(), y.numpy())
 plt.show()
 
@@ -31,7 +34,7 @@ torch_dataset = Data.TensorDataset(data_tensor=x, target_tensor=y)
 loader = Data.DataLoader(dataset=torch_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2,)
 
 
-# default network
+# build default network box: nodes layers are given inside
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -43,30 +46,38 @@ class Net(torch.nn.Module):
         x = self.predict(x)             # linear output
         return x
 
-# different nets
+# Create 4 network box, same structure as above
 net_SGD         = Net()
 net_Momentum    = Net()
 net_RMSprop     = Net()
 net_Adam        = Net()
+
+# put these four network boxes into a list
 nets = [net_SGD, net_Momentum, net_RMSprop, net_Adam]
 
-# different optimizers
+# Create 4 different optimizers boxes
 opt_SGD         = torch.optim.SGD(net_SGD.parameters(), lr=LR)
 opt_Momentum    = torch.optim.SGD(net_Momentum.parameters(), lr=LR, momentum=0.8)
 opt_RMSprop     = torch.optim.RMSprop(net_RMSprop.parameters(), lr=LR, alpha=0.9)
 opt_Adam        = torch.optim.Adam(net_Adam.parameters(), lr=LR, betas=(0.9, 0.99))
 optimizers = [opt_SGD, opt_Momentum, opt_RMSprop, opt_Adam]
 
+# create loss MSE box
 loss_func = torch.nn.MSELoss()
+
+# create a list of 4 lists to store losses of each net during training
 losses_his = [[], [], [], []]   # record loss
 
 # training
 for epoch in range(EPOCH):
     print('Epoch: ', epoch)
-    for step, (batch_x, batch_y) in enumerate(loader):          # for each training step
+    for step, (batch_x, batch_y) in enumerate(loader):
+		# must be Variables
         b_x = Variable(batch_x)
         b_y = Variable(batch_y)
 
+		# for every batch, every net will be trained one by one
+		# all of (nets, optimizers, losses_his) are lists
         for net, opt, l_his in zip(nets, optimizers, losses_his):
             output = net(b_x)              # get output for every net
             loss = loss_func(output, b_y)  # compute loss for every net
@@ -75,6 +86,7 @@ for epoch in range(EPOCH):
             opt.step()                     # apply gradients
             l_his.append(loss.data[0])     # loss recoder
 
+# plot 4 losses lines
 labels = ['SGD', 'Momentum', 'RMSprop', 'Adam']
 for i, l_his in enumerate(losses_his):
     plt.plot(l_his, label=labels[i])
