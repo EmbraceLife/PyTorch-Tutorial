@@ -12,22 +12,29 @@ import matplotlib.pyplot as plt
 
 torch.manual_seed(1)    # reproducible
 
-# fake data
-x = torch.unsqueeze(torch.linspace(-1, 1, 100), dim=1)  # x data (tensor), shape=(100, 1)
-y = x.pow(2) + 0.2*torch.rand(x.size())  # noisy y data (tensor), shape=(100, 1)
+# x data (tensor), shape=(100, 1)
+# torch.unsqueeze: add 1-d to second place
+x = torch.unsqueeze(torch.linspace(-1, 1, 100), dim=1)
+
+# create noisy data with same size as x
+# y data (tensor), shape=(100, 1)
+y = x.pow(2) + 0.2*torch.rand(x.size())
 x, y = Variable(x, requires_grad=False), Variable(y, requires_grad=False)
 
 
 def save():
-    # save net1
+    # build a network box
     net1 = torch.nn.Sequential(
         torch.nn.Linear(1, 10),
         torch.nn.ReLU(),
         torch.nn.Linear(10, 1)
     )
+	# build optimizer box
     optimizer = torch.optim.SGD(net1.parameters(), lr=0.5)
+	# build loss box
     loss_func = torch.nn.MSELoss()
 
+	# train a 100 steps
     for t in range(100):
         prediction = net1(x)
         loss = loss_func(prediction, y)
@@ -42,14 +49,17 @@ def save():
     plt.scatter(x.data.numpy(), y.data.numpy())
     plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
 
-    # 2 ways to save the net
-    torch.save(net1, 'net.pkl')  # save entire net
-    torch.save(net1.state_dict(), 'net_params.pkl')   # save only the parameters
+    # save entire net
+    torch.save(net1, 'net.pkl')
+	# save only the parameters
+    torch.save(net1.state_dict(), 'net_params.pkl')
 
 
 def restore_net():
     # restore entire net1 to net2
     net2 = torch.load('net.pkl')
+
+	# feed input to net2 box, to get output
     prediction = net2(x)
 
     # plot result
@@ -60,15 +70,18 @@ def restore_net():
 
 
 def restore_params():
-    # restore only the parameters in net1 to net3
+    # restore model from parameters
+	# first, build a model or network box with same nodes and layers
     net3 = torch.nn.Sequential(
         torch.nn.Linear(1, 10),
         torch.nn.ReLU(),
         torch.nn.Linear(10, 1)
     )
 
-    # copy net1's parameters into net3
+    # load parameters into the network box
     net3.load_state_dict(torch.load('net_params.pkl'))
+
+	# feed input to network box to get output 
     prediction = net3(x)
 
     # plot result
