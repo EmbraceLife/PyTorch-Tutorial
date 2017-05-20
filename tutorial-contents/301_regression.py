@@ -76,7 +76,11 @@ loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 
 # turn interactive mode on
 plt.ion()   # something about plotting
-plt.show()
+# plt.show()
+
+# create a loss container
+losses = []
+steps = []
 
 for t in range(100):
 	# feed input x to net object to get final output prediction of net.forward()
@@ -101,14 +105,22 @@ for t in range(100):
     if t % 5 == 0:
         # clear the current axes
         plt.cla()
-		# plot features and targets
-        plt.scatter(x.data.numpy(), y.data.numpy())
-		# plot features and predictions
-        plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
-		# plot texts
-        plt.text(0.5, 0, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
+		# # plot features and targets
+        # plt.scatter(x.data.numpy(), y.data.numpy())
+		# # plot features and predictions
+        # plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
+		# # plot texts
+        # plt.text(0.5, 0, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
+
+		# store loss values
+        losses.append(loss.data[0])
+        steps.append(t)
+		# plot loss
+        plt.plot(steps, losses, 'b-')
+
 		# Pause for *interval* seconds
         plt.pause(0.5)
+
 
 plt.ioff()
 plt.show()
