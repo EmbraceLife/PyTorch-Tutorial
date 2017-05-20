@@ -75,8 +75,9 @@ optimizer = torch.optim.SGD(net.parameters(), lr=0.5)
 loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 
 # turn interactive mode on
-plt.ion()   # something about plotting
-# plt.show()
+plt.ion()
+# this code must be outside of looping to take effect on size
+plt.figure(1, figsize=(8, 4))
 
 # create a loss container
 losses = []
@@ -103,23 +104,43 @@ for t in range(100):
     optimizer.step()
 
     if t % 5 == 0:
+
         # clear the current axes
+		# in fact it is to clear the plots for the last plotted plot
         plt.cla()
-		# # plot features and targets
-        # plt.scatter(x.data.numpy(), y.data.numpy())
-		# # plot features and predictions
-        # plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
-		# # plot texts
-        # plt.text(0.5, 0, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
+		# clear the first plotted plot
+        plt.subplot(121).cla()
 
 		# store loss values
+        plt.subplot(121)
         losses.append(loss.data[0])
         steps.append(t)
 		# plot loss
         plt.plot(steps, losses, 'b-')
+		# text location coordinates changes as axes limits changes
+		# coordinates are to be consistent with the subplot x and y axes
+        plt.text(20, 0.3, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
+		# if we contrain xlim and ylim, then text coordinates won't change as axes don't change any more
+        plt.xlim((0,100))
+        plt.ylim((0,0.35))
+        plt.title("loss in training")
+
+        # plt.subplot(121).cla()
+        # plt.subplot(122).cla()
+		# create a subplot with position inside the figure
+        plt.subplot(122)
+		# plot features and targets
+        plt.scatter(x.data.numpy(), y.data.numpy())
+		# plot features and predictions
+        plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
+        plt.title("(features,target) vs (features, prediction)")
+		# plot texts
+
 
 		# Pause for *interval* seconds
         plt.pause(0.5)
+
+
 
 
 plt.ioff()
