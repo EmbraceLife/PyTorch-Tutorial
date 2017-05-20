@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 
 
-# replace following class code with an easy sequential network
+# method1: build a network with more flexibility
 class Net(torch.nn.Module):
     def __init__(self, n_feature, n_hidden, n_output):
         super(Net, self).__init__()
@@ -17,15 +17,17 @@ class Net(torch.nn.Module):
         self.predict = torch.nn.Linear(n_hidden, n_output)   # output layer
 
     def forward(self, x):
+		# here relu is used as a func to get output of this acivation layer
         x = F.relu(self.hidden(x))      # activation function for hidden layer
         x = self.predict(x)             # linear output
         return x
 
 net1 = Net(1, 10, 1)
 
-# easy and fast way to build your network
+# easy fast but not as flexible as method 1
 net2 = torch.nn.Sequential(
     torch.nn.Linear(1, 10),
+	# here relu is defined as a class
     torch.nn.ReLU(),
     torch.nn.Linear(10, 1)
 )
