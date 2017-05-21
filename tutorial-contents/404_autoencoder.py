@@ -1,4 +1,19 @@
 """
+alias dr pp dir(%1)
+alias dt pp %1.__dict__
+alias pdt for k, v in %1.items(): print(k, ": ", v)
+alias loc locals().keys()
+alias doc from inspect import getdoc; from pprint import pprint; pprint(getdoc(%1))
+alias sources from inspect import getsourcelines; from pprint import pprint; pprint(getsourcelines(%1))
+alias module from inspect import getmodule; from pprint import pprint; pprint(getmodule(%1))
+alias fullargs from inspect import getfullargspec; from pprint import pprint; pprint(getfullargspec(%1))
+
+alias opt_param optimizer.param_groups[0]['params'][%1]
+
+alias opt_grad optimizer.param_groups[0]['params'][%1].grad
+
+
+
 View more, visit my tutorial page: https://morvanzhou.github.io/tutorials/
 My Youtube Channel: https://www.youtube.com/user/MorvanZhou
 
@@ -82,13 +97,15 @@ autoencoder = AutoEncoder()
 optimizer = torch.optim.Adam(autoencoder.parameters(), lr=LR)
 loss_func = nn.MSELoss()
 
-# initialize figure
+# initialize figure: another way of subplotting
 f, a = plt.subplots(2, N_TEST_IMG, figsize=(5, 2))
 plt.ion()   # continuously plot
 plt.show()
 
 # original data (first row) for viewing
 view_data = Variable(train_data.train_data[:N_TEST_IMG].view(-1, 28*28).type(torch.FloatTensor)/255.)
+
+# easy and fast way of plotting many subplots on a row
 for i in range(N_TEST_IMG):
     a[0][i].imshow(np.reshape(view_data.data.numpy()[i], (28, 28)), cmap='gray')
     a[0][i].set_xticks(())
@@ -96,8 +113,14 @@ for i in range(N_TEST_IMG):
 
 for epoch in range(EPOCH):
     for step, (x, y) in enumerate(train_loader):
-        b_x = Variable(x.view(-1, 28*28))   # batch x, shape (batch, 28*28)
-        b_y = Variable(x.view(-1, 28*28))   # batch y, shape (batch, 28*28)
+		# first, check x, y, size
+		# x.size(): (64, 1, 28, 28)
+
+		# batch x, shape (batch, 28*28)
+        b_x = Variable(x.view(-1, 28*28))
+		# batch y, shape (batch, 28*28)
+        b_y = Variable(x.view(-1, 28*28))
+
         b_label = Variable(y)               # batch label
 
         encoded, decoded = autoencoder(b_x)
@@ -126,6 +149,8 @@ plt.show()
 # visualize in 3D plot
 view_data = Variable(train_data.train_data[:200].view(-1, 28*28).type(torch.FloatTensor)/255.)
 encoded_data, _ = autoencoder(view_data)
+
+# create a second plot
 fig = plt.figure(2)
 ax = Axes3D(fig)
 X = encoded_data.data[:, 0].numpy()
@@ -133,6 +158,7 @@ Y = encoded_data.data[:, 1].numpy()
 Z = encoded_data.data[:, 2].numpy()
 values = train_data.train_labels[:200].numpy()
 for x, y, z, s in zip(X, Y, Z, values):
+	# cm is a module from matplotlib
     c = cm.rainbow(int(255*s/9))
     ax.text(x, y, z, s, backgroundcolor=c)
 ax.set_xlim(X.min(), X.max())
