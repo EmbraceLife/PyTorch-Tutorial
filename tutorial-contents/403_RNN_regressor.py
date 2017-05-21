@@ -1,6 +1,19 @@
 """
+alias dr pp dir(%1)
+alias dt pp %1.__dict__
+alias pdt for k, v in %1.items(): print(k, ": ", v)
+alias loc locals().keys()
+alias doc from inspect import getdoc; from pprint import pprint; pprint(getdoc(%1))
+alias sources from inspect import getsourcelines; from pprint import pprint; pprint(getsourcelines(%1))
+alias module from inspect import getmodule; from pprint import pprint; pprint(getmodule(%1))
+alias fullargs from inspect import getfullargspec; from pprint import pprint; pprint(getfullargspec(%1))
+
+alias opt_param optimizer.param_groups[0]['params'][%1]
+
+alias opt_grad optimizer.param_groups[0]['params'][%1].grad
+
 View more, visit my tutorial page: https://morvanzhou.github.io/tutorials/
-My Youtube Channel: https://www.youtube.com/user/MorvanZhou
+Video for this tutorial: https://youtu.be/CA27ONB8SQ4?list=PLXO45tsB95cJxT0mL0P3-G0rBcLSvVkKH&t=24
 
 Dependencies:
 torch: 0.1.11
@@ -35,12 +48,12 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
 
         self.rnn = nn.RNN(
-            input_size=INPUT_SIZE,
+            input_size=INPUT_SIZE, # 1 (important)
             hidden_size=32,     # rnn hidden unit
             num_layers=1,       # number of rnn layer
             batch_first=True,   # input & output will has batch size as 1s dimension. e.g. (batch, time_step, input_size)
         )
-        self.out = nn.Linear(32, 1)
+        self.out = nn.Linear(32, 1) # 32 link to rnn hidden layer
 
     def forward(self, x, h_state):
         # x (batch, time_step, input_size)
@@ -48,14 +61,18 @@ class RNN(nn.Module):
         # r_out (batch, time_step, hidden_size)
         r_out, h_state = self.rnn(x, h_state)
 
+		# How to understand here? every step's output is applied to self.out layer, then stored into a list, then stacked into a tensor with shape (1, 10, 1)
+		# 10 is num of steps 
         outs = []    # save all predictions
-        for time_step in range(r_out.size(1)):    # calculate output for each time step
+        for time_step in range(r_out.size(1)):
+			# calculate output for each time step
             outs.append(self.out(r_out[:, time_step, :]))
         return torch.stack(outs, dim=1), h_state
 
 
 rnn = RNN()
 print(rnn)
+
 
 optimizer = torch.optim.Adam(rnn.parameters(), lr=LR)   # optimize all cnn parameters
 loss_func = nn.MSELoss()
