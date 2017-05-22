@@ -1,4 +1,17 @@
 """
+alias dr pp dir(%1)
+alias dt pp %1.__dict__
+alias pdt for k, v in %1.items(): print(k, ": ", v)
+alias loc locals().keys()
+alias doc from inspect import getdoc; from pprint import pprint; pprint(getdoc(%1))
+alias sources from inspect import getsourcelines; from pprint import pprint; pprint(getsourcelines(%1))
+alias module from inspect import getmodule; from pprint import pprint; pprint(getmodule(%1))
+alias fullargs from inspect import getfullargspec; from pprint import pprint; pprint(getfullargspec(%1))
+
+alias opt_param optimizer.param_groups[0]['params'][%1]
+
+alias opt_grad optimizer.param_groups[0]['params'][%1].grad
+
 View more, visit my tutorial page: https://morvanzhou.github.io/tutorials/
 My Youtube Channel: https://www.youtube.com/user/MorvanZhou
 
@@ -10,6 +23,10 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import math
+import numpy as np
+
 
 # input args: int or long as you like
 torch.manual_seed(1)    # reproducible
@@ -58,10 +75,10 @@ class Net(torch.nn.Module):
     def forward(self, x):
 		# feed data into first hidden layer box
 		# also apply relu activation directly onto the feeded hidden layer
-        x = F.relu(self.hidden(x))
+        layer1 = F.relu(self.hidden(x))
 		# then feed the output of hidden relu activation to second hidden layer box, to get linear output
-        x = self.predict(x)
-        return x
+        layer2 = self.predict(layer1)
+        return layer1, layer2
 
 # Create an Net object with specific nodes numbers for each layer (input layer, hidden layer 1, hidden layer 2)
 net = Net(n_feature=1, n_hidden=10, n_output=1)
@@ -77,15 +94,15 @@ loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 # turn interactive mode on
 plt.ion()
 # this code must be outside of looping to take effect on size
-plt.figure(1, figsize=(8, 4))
-
+# fig = plt.figure(1, figsize=(5, 5))
+# fig.suptitle(layer_name+", shape:"+str(values.shape), fontsize="x-large")
 # create a loss container
 losses = []
 steps = []
 
 for t in range(100):
-	# feed input x to net object to get final output prediction of net.forward()
-    prediction = net(x)
+	# feed input x to net object to get all layer outputs
+    layer1, prediction = net(x)
 
 	# feed forward output and true target values to loss box
     loss = loss_func(prediction, y)     # must be (1. nn output, 2. target)
@@ -105,40 +122,106 @@ for t in range(100):
 
     if t % 5 == 0:
 
-        # clear the current axes
-		# in fact it is to clear the plots for the last plotted plot
-        plt.cla()
-		# clear the first plotted plot
-        plt.subplot(121).cla()
+		# access w and b of each layer
+        param_names = []
+        param_values = []
+        for k, v in net.state_dict().items():
+            param_names.append(k)
+            param_values.append(v) # save as numpy array
 
-		# store loss values
-        plt.subplot(121)
-        losses.append(loss.data[0])
-        steps.append(t)
-		# plot loss
-        plt.plot(steps, losses, 'b-')
-		# text location coordinates changes as axes limits changes
-		# coordinates are to be consistent with the subplot x and y axes
-        plt.text(20, 0.3, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
-		# if we contrain xlim and ylim, then text coordinates won't change as axes don't change any more
-        plt.xlim((0,100))
-        plt.ylim((0,0.35))
-        plt.title("loss in training")
+        num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
 
-        # plt.subplot(121).cla()
-        # plt.subplot(122).cla()
-		# create a subplot with position inside the figure
-        plt.subplot(122)
-		# plot features and targets
-        plt.scatter(x.data.numpy(), y.data.numpy())
-		# plot features and predictions
-        plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
-        plt.title("(features,target) vs (features, prediction)")
-		# plot texts
+        fig = plt.figure(1, figsize=(5, 5))
+        fig.suptitle("epoch:"+str(t), fontsize="x-large")
+        # plt.cla() # comment out to avoid axis printing of the last subplot
+        outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
 
-		# Pause for *interval* seconds
+        param_index = 0
+		# draw w and b with color
+        for param in param_values:
+            if len(param.size())>1 and len(param.size()) < 3:
+				# get num_rows, num_cols of weights or bias
+                s1, s2 = param.size()
+                if s1 < s2:
+                    num_img = s1
+                    s1 = s2
+                    s2 = num_img
+				# num_cols are number images to have
+                num_img_row_col = math.ceil(math.sqrt(s2))
+
+            if len(param.size()) == 1:
+                num_img_row_col == 1
+				# s1 = param.size() is not a float or int
+                s1 = len(param)
+                s2 = 1
+
+		    # consider a col is an imaage, num_rows is all pixels of an image
+            img_wh = math.ceil(math.sqrt(s1))
+
+
+			# add pixels to fill a square
+            missing_pix = img_wh*img_wh - s1
+			# for each col, add enough 0s to met a square of pixels
+            param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
+
+
+            # plt.cla()
+            # fig, sub = plt.subplots(num_img_row_col, num_img_row_col)
+            inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
+
+
+            for index in range(s2):
+
+                ax = plt.Subplot(fig, inner[index])
+                ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
+				# How to change subplot title's size??? check doc and examples online
+                ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape))
+                ax.set_xticks(())
+                ax.set_yticks(())
+                fig.add_subplot(ax)
+
+            param_index += 1
+
+            # Pause for *interval* seconds
         plt.pause(0.5)
+
+
+
+        # # clear the current axes
+		# # in fact it is to clear the plots for the last plotted plot
+        # plt.cla()
+		# # clear the first plotted plot
+        # plt.subplot(121).cla()
+		#
+		# # store loss values
+        # plt.subplot(121)
+        # losses.append(loss.data[0])
+        # steps.append(t)
+		# # plot loss
+        # plt.plot(steps, losses, 'b-')
+		# # text location coordinates changes as axes limits changes
+		# # coordinates are to be consistent with the subplot x and y axes
+        # plt.text(20, 0.3, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
+		# # if we contrain xlim and ylim, then text coordinates won't change as axes don't change any more
+        # plt.xlim((0,100))
+        # plt.ylim((0,0.35))
+        # plt.title("loss in training")
+		#
+        # # plt.subplot(121).cla()
+        # # plt.subplot(122).cla()
+		# # create a subplot with position inside the figure
+        # plt.subplot(122)
+		# # plot features and targets
+        # plt.scatter(x.data.numpy(), y.data.numpy())
+		# # plot features and predictions
+        # plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
+        # plt.title("(features,target) vs (features, prediction)")
+		# # plot texts
+
+
+		# # Pause for *interval* seconds
+        # plt.pause(0.5)
 
 
 
