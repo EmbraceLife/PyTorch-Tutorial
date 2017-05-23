@@ -26,8 +26,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import math
 import numpy as np
-
-
+import os
+import subprocess
 # input args: int or long as you like
 torch.manual_seed(1)    # reproducible
 
@@ -92,7 +92,7 @@ optimizer = torch.optim.SGD(net.parameters(), lr=0.5)
 loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 
 # turn interactive mode on
-plt.ion()
+# plt.ion()
 # make subplot title fontsize to be 'small', default is 'large'
 # plt.rcParams['axes.titlesize']='small'
 # create a loss container
@@ -231,52 +231,34 @@ for t in range(100):
             param_index += 1
 
             # Pause for *interval* seconds
-        plt.pause(0.5)
-		# plt.cla() to clear current axes
-		# plt.clf() to clear all plots
-        plt.clf()
-
-
-
-        # # clear the current axes
-		# # in fact it is to clear the plots for the last plotted plot
-        # plt.cla()
-		# # clear the first plotted plot
-        # plt.subplot(121).cla()
-		#
-		# # store loss values
-        # plt.subplot(121)
-        # losses.append(loss.data[0])
-        # steps.append(t)
-		# # plot loss
-        # plt.plot(steps, losses, 'b-')
-		# # text location coordinates changes as axes limits changes
-		# # coordinates are to be consistent with the subplot x and y axes
-        # plt.text(20, 0.3, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
-		# # if we contrain xlim and ylim, then text coordinates won't change as axes don't change any more
-        # plt.xlim((0,100))
-        # plt.ylim((0,0.35))
-        # plt.title("loss in training")
-		#
-        # # plt.subplot(121).cla()
-        # # plt.subplot(122).cla()
-		# # create a subplot with position inside the figure
-        # plt.subplot(122)
-		# # plot features and targets
-        # plt.scatter(x.data.numpy(), y.data.numpy())
-		# # plot features and predictions
-        # plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
-        # plt.title("(features,target) vs (features, prediction)")
-		# # plot texts
-
-
-		# # Pause for *interval* seconds
         # plt.pause(0.5)
+		## plt.cla() to clear current axes
+		## plt.clf() to clear all plots
+        # plt.clf()
+		# to save instead of displaying iwth
+        fig.savefig('{}/{}/epoch_{}.png'.format("/Users/Natsume/Downloads/morvan_new_pytorch", "img_2_video", t))
 
 
-
-
-plt.ioff()
+# plt.ioff()
 # plt.show()
+"""
+os.chdir('/Users/Natsume/Downloads/morvan_new_pytorch/img_2_video')
+subprocess.call(['ffmpeg', '-i', 'epoch_%d0.png', 'output.avi'])
 
-# "train a regression model, plot while training, torch.manual_seed, torch.unsqueeze, torch.linspace, torch.pow, torch.pow, torch.rand, Net(torch.nn.Module), torch.nn.Linear, F.reul, print(net), net.parameters(), torch.optim.SGD, torch.nn.MSEloss, optimizer.zero_grad, loss.backward, optimizer.step, plt.ion, plt.ioff, plt.cla, plt.pause"
+
+# convert from images to video
+http://hamelot.io/visualization/using-ffmpeg-to-convert-a-set-of-images-into-a-video/
+# it must be %d0.png, not %d.png, %d5.png seems fine
+ffmpeg -i epoch_%d0.png output.avi
+
+# to slowdown video
+https://trac.ffmpeg.org/wiki/How%20to%20speed%20up%20/%20slow%20down%20a%20video
+ffmpeg -i output.avi -filter:v "setpts=4.0*PTS" output_down.avi
+
+# to speed up a video
+ffmpeg -i output.avi -r 16 -filter:v "setpts=0.25*PTS" output_up.avi
+
+# convert video to gif
+ffmpeg -i output_down.avi out_down.gif
+
+"""
