@@ -93,9 +93,8 @@ loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 
 # turn interactive mode on
 plt.ion()
-# this code must be outside of looping to take effect on size
-# fig = plt.figure(1, figsize=(5, 5))
-# fig.suptitle(layer_name+", shape:"+str(values.shape), fontsize="x-large")
+# make subplot title fontsize to be 'small', default is 'large'
+plt.rcParams['axes.titlesize']='small'
 # create a loss container
 losses = []
 steps = []
@@ -103,6 +102,8 @@ steps = []
 for t in range(100):
 	# feed input x to net object to get all layer outputs
     layer1, prediction = net(x)
+    # check the size of layer1 and prediction layer
+	# then sent them to the list of weights and biases
 
 	# feed forward output and true target values to loss box
     loss = loss_func(prediction, y)     # must be (1. nn output, 2. target)
@@ -129,6 +130,18 @@ for t in range(100):
             param_names.append(k)
             param_values.append(v) # save as numpy array
 
+		# now insert layer1 and prediction layer into the two list above: must use list.insert(index, value)
+        param_names.insert(2, "h-layer1")
+        param_names.append("pred_layer")
+        param_values.insert(2, layer1.data)
+        param_values.append(prediction.data)
+
+		# add loss and step data into param_names and param_values later plotting
+        losses.append(loss.data[0])
+        steps.append(t)
+        param_names.append("loss")
+        param_values.append([steps, losses])
+
         num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
 
         fig = plt.figure(1, figsize=(5, 5))
@@ -140,7 +153,13 @@ for t in range(100):
         param_index = 0
 		# draw w and b with color
         for param in param_values:
-            if len(param.size())>1 and len(param.size()) < 3:
+			# add loss plot
+            if param_names[param_index] == 'loss':
+                num_img_row_col == 1
+                s2 = 1
+
+
+            elif len(param.size())==2:
 				# get num_rows, num_cols of weights or bias
                 s1, s2 = param.size()
                 if s1 < s2:
@@ -150,20 +169,25 @@ for t in range(100):
 				# num_cols are number images to have
                 num_img_row_col = math.ceil(math.sqrt(s2))
 
-            if len(param.size()) == 1:
+            elif len(param.size()) == 1:
                 num_img_row_col == 1
 				# s1 = param.size() is not a float or int
                 s1 = len(param)
                 s2 = 1
 
-		    # consider a col is an imaage, num_rows is all pixels of an image
-            img_wh = math.ceil(math.sqrt(s1))
+            else:
+                pass
+
+			# make sure loss plot has no following variables
+            if param_names[param_index] != 'loss':
+			    # consider a col is an image, num_rows is all pixels of an image
+	            img_wh = math.ceil(math.sqrt(s1))
 
 
-			# add pixels to fill a square
-            missing_pix = img_wh*img_wh - s1
-			# for each col, add enough 0s to met a square of pixels
-            param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
+				# add pixels to fill a square
+	            missing_pix = img_wh*img_wh - s1
+				# for each col, add enough 0s to met a square of pixels
+	            param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
 
 
             # plt.cla()
@@ -171,20 +195,43 @@ for t in range(100):
             inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
 
 
+
             for index in range(s2):
 
                 ax = plt.Subplot(fig, inner[index])
-                ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
+
+                if param_names[param_index] == 'loss':
+
+    				# plot loss
+                    ax.plot(param[0], param[1], 'b-')
+					# text location coordinates changes as axes limits changes
+					# coordinates are to be consistent with the subplot x and y axes
+                    # ax.text(20, 0.3, 'Loss=%.4f' % loss.data[0], fontdict={'size': 20, 'color':  'red'})
+					# if we contrain xlim and ylim, then text coordinates won't change as axes don't change any more
+                    ax.set_xlim((0,100))
+                    ax.set_ylim((0,0.35))
+                    ax.set_title("loss: %.4f" % loss.data[0], fontdict={'size': 5, 'color':  'red'})
+                    fig.add_subplot(ax)
+
+                else:
+                    ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
 				# How to change subplot title's size??? check doc and examples online
-                ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape))
-                ax.set_xticks(())
-                ax.set_yticks(())
-                fig.add_subplot(ax)
+				# how to handle subplot main title???
+                    if s2 > 1:
+					# make sure the title is in the middle
+                        if index == int(num_img_row_col/2):
+                            ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape))
+                    else:
+                        ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape))
+                    ax.set_xticks(())
+                    ax.set_yticks(())
+                    fig.add_subplot(ax)
 
             param_index += 1
 
             # Pause for *interval* seconds
         plt.pause(0.5)
+        plt.cla()		
 
 
 
