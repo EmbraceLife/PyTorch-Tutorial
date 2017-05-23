@@ -94,7 +94,7 @@ loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
 # turn interactive mode on
 plt.ion()
 # make subplot title fontsize to be 'small', default is 'large'
-plt.rcParams['axes.titlesize']='small'
+# plt.rcParams['axes.titlesize']='small'
 # create a loss container
 losses = []
 steps = []
@@ -144,6 +144,7 @@ for t in range(100):
 
         num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
 
+
         fig = plt.figure(1, figsize=(5, 5))
         fig.suptitle("epoch:"+str(t), fontsize="x-large")
         # plt.cla() # comment out to avoid axis printing of the last subplot
@@ -178,7 +179,7 @@ for t in range(100):
             else:
                 pass
 
-			# make sure loss plot has no following variables
+			# make sure loss has no following variables
             if param_names[param_index] != 'loss':
 			    # consider a col is an image, num_rows is all pixels of an image
 	            img_wh = math.ceil(math.sqrt(s1))
@@ -210,7 +211,7 @@ for t in range(100):
 					# if we contrain xlim and ylim, then text coordinates won't change as axes don't change any more
                     ax.set_xlim((0,100))
                     ax.set_ylim((0,0.35))
-                    ax.set_title("loss: %.4f" % loss.data[0], fontdict={'size': 5, 'color':  'red'})
+                    ax.set_title("loss: %.4f" % loss.data[0], fontdict={'size': 8, 'color':  'black'})
                     fig.add_subplot(ax)
 
                 else:
@@ -220,9 +221,9 @@ for t in range(100):
                     if s2 > 1:
 					# make sure the title is in the middle
                         if index == int(num_img_row_col/2):
-                            ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape))
+                            ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
                     else:
-                        ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape))
+                        ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
                     ax.set_xticks(())
                     ax.set_yticks(())
                     fig.add_subplot(ax)
@@ -231,7 +232,9 @@ for t in range(100):
 
             # Pause for *interval* seconds
         plt.pause(0.5)
-        plt.cla()		
+		# plt.cla() to clear current axes
+		# plt.clf() to clear all plots
+        plt.clf()
 
 
 
@@ -274,6 +277,6 @@ for t in range(100):
 
 
 plt.ioff()
-plt.show()
+# plt.show()
 
 # "train a regression model, plot while training, torch.manual_seed, torch.unsqueeze, torch.linspace, torch.pow, torch.pow, torch.rand, Net(torch.nn.Module), torch.nn.Linear, F.reul, print(net), net.parameters(), torch.optim.SGD, torch.nn.MSEloss, optimizer.zero_grad, loss.backward, optimizer.step, plt.ion, plt.ioff, plt.cla, plt.pause"
