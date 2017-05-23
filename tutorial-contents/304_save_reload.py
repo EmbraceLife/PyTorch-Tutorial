@@ -10,7 +10,11 @@ import torch
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-torch.manual_seed(1)    # reproducible
+
+### prepare dataset for x and target
+
+# reproducible for random dataset created
+torch.manual_seed(1)
 
 # x data (tensor), shape=(100, 1)
 # torch.unsqueeze: add 1-d to second place
@@ -34,6 +38,8 @@ def save():
 	# build loss box
     loss_func = torch.nn.MSELoss()
 
+	# number of training step
+    steps = 0
 	# train a 100 steps
     for t in range(100):
         prediction = net1(x)
@@ -41,6 +47,7 @@ def save():
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        steps = t + 1
 
     # plot result
     plt.figure(1, figsize=(10, 3))
@@ -50,15 +57,44 @@ def save():
     plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
 
     # save entire net
-    torch.save(net1, 'net.pkl')
+    torch.save(net1, '/Users/Natsume/Downloads/temp_folders/save_load/net.pkl')
 	# save only the parameters
-    torch.save(net1.state_dict(), 'net_params.pkl')
+    torch.save(net1.state_dict(), '/Users/Natsume/Downloads/temp_folders/save_load/net_params.pkl')
+	# save number of training step
+    torch.save(steps, '/Users/Natsume/Downloads/temp_folders/save_load/steps.pkl')
 
 
-def restore_net():
+
+def restore_net_keep_training():
     # restore entire net1 to net2
-    net2 = torch.load('net.pkl')
+    net2 = torch.load('/Users/Natsume/Downloads/temp_folders/save_load/net.pkl')
 
+	# continue to train
+	# keep to use the same setting for optimizer
+    optimizer = torch.optim.SGD(net2.parameters(), lr=0.5)
+	# use the same loss function
+    loss_func = torch.nn.MSELoss()
+
+	# load previous train_step log info
+    steps = torch.load('/Users/Natsume/Downloads/temp_folders/save_load/steps.pkl')
+
+	# train a 100 steps
+    epochs=100
+    for t in range(epochs):
+        prediction = net2(x)
+        loss = loss_func(prediction, y)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    steps = steps + epochs
+    print("we trained {} steps".format(steps))
+
+    torch.save(net2, '/Users/Natsume/Downloads/temp_folders/save_load/net.pkl')
+    torch.save(steps, '/Users/Natsume/Downloads/temp_folders/save_load/steps.pkl')
+    print("save net and steps")
+
+##################
 	# feed input to net2 box, to get output
     prediction = net2(x)
 
@@ -68,6 +104,9 @@ def restore_net():
     plt.scatter(x.data.numpy(), y.data.numpy())
     plt.plot(x.data.numpy(), prediction.data.numpy(), 'r-', lw=5)
 
+restore_net_keep_training()
+
+save()
 
 def restore_params():
     # restore model from parameters
@@ -81,7 +120,7 @@ def restore_params():
     # load parameters into the network box
     net3.load_state_dict(torch.load('net_params.pkl'))
 
-	# feed input to network box to get output 
+	# feed input to network box to get output
     prediction = net3(x)
 
     # plot result
