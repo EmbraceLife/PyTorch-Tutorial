@@ -236,11 +236,18 @@ for t in range(100):
 		## plt.clf() to clear all plots
         # plt.clf()
 		# to save instead of displaying iwth
-        fig.savefig('{}/{}/epoch_{}.png'.format("/Users/Natsume/Downloads/morvan_new_pytorch", "img_2_video", t))
+        fig.savefig('{}/epoch_{}.png'.format("/Users/Natsume/Downloads/temp_folders/img_2_video", t))
 
 
 # plt.ioff()
 # plt.show()
+
+# save entire net
+torch.save(net, '/Users/Natsume/Downloads/temp_folders/img_2_video/net.pkl')
+
+# save number of training step
+torch.save(epochs, '/Users/Natsume/Downloads/temp_folders/img_2_video/steps.pkl')
+
 """
 os.chdir('/Users/Natsume/Downloads/morvan_new_pytorch/img_2_video')
 subprocess.call(['ffmpeg', '-i', 'epoch_%d0.png', 'output.avi'])
