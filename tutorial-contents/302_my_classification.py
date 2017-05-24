@@ -14,19 +14,19 @@ alias opt_grad optimizer.param_groups[0]['params'][%1].grad
 """
 
 """
+## View prepared dataset (test prepareData)
+python -m pdb tutorial-contents/302_my_classification.py prepareData
+
 ## to display plotting
-python -m pdb tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -d
+python -m pdb tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -d
 
 ## to save plots (without pdb)
-python tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -num 200
+python tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -num 200
 
 ## continue to train (save plots), without pdb
-python tutorial-contents/103_argparse_train_again.py train_again -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -num 200
+python tutorial-contents/302_my_classification.py train_again -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -num 200
 """
 
-###########################
-# style from ONMT combined with kur style
-###########################
 
 import argparse
 import sys
@@ -40,49 +40,72 @@ import numpy as np
 import os
 import subprocess
 
-# this framework (py.file) can run individual functions like train() or train_again() independently
+
 
 def prepareData(args):
-	""" Prepare dataset for training later: 1. return x, y as Variables; 2. args: can help do lots of things: shrink data, special treatment to data, ...
+	""" Prepare dataset for training later: 1. return x, y as Variables; 2. args.view_data being true, we plot the prepared datasets; 3. args: can help do lots of things: shrink data, special treatment to data, ...
 	"""
-	# reproducible
-	torch.manual_seed(1)
-	# make a 1-d tensor 2-d
-	x = torch.unsqueeze(torch.linspace(-1, 1, 100), dim=1)
-	# make random y based on x
-	y = x.pow(2) + 0.2*torch.rand(x.size())
-	# convert tensor to variables
+	torch.manual_seed(1)    # reproducible
+
+	# create tensor (100, 2) of 1s
+	n_data = torch.ones(100, 2)
+
+	#### data for class 1
+	# torch.normal(mean|tensor, std)
+	x0 = torch.normal(2*n_data, 1)
+	y0 = torch.zeros(100)
+
+	### data for class 2
+	x1 = torch.normal(-2*n_data, 1)
+	y1 = torch.ones(100)
+
+	### add two tensor on rows, and change type from int to float
+	x = torch.cat((x0, x1), 0).type(torch.FloatTensor)
+	y = torch.cat((y0, y1), ).type(torch.LongTensor)
+
+	# conver tensors to variables
 	x, y = Variable(x), Variable(y)
+
+
+	plt.scatter(x.data.numpy()[:, 0], x.data.numpy()[:, 1], c=y.data.numpy(), s=100, lw=0, cmap='RdYlGn')
+	plt.show()
 
 	return (x, y)
 
+######################################################
 # move Net in global env due to AttributeError: Can't pickle local object 'build_net.<locals>.Net'
 class Net(torch.nn.Module):
     def __init__(self, n_feature, n_hidden, n_output):
         super(Net, self).__init__()
+	# 3 lines above are just template must have!!!
 
+		# build 2 hidden layers
         self.hidden = torch.nn.Linear(n_feature, n_hidden)
-        self.predict = torch.nn.Linear(n_hidden, n_output)
+        self.out = torch.nn.Linear(n_hidden, n_output)
 
+	# feed dataset to hidden layers and apply activation functions
     def forward(self, x):
-
         layer1 = F.relu(self.hidden(x))
-        layer2 = self.predict(layer1)
+        prediction = self.out(layer1)
+        return layer1, prediction
 
-        return layer1, layer2
 
+######################################################
 def build_net(args):
 	""" Build network: 1. Create Net Class with its forward pass; 2. instantiate a net; 3. build a optimizer box and loss box; 4. args: to bring in parameters for build nets
 	"""
 
-	# Net(n_feature=args.input_size, n_hidden=args.hidden_size, n_output=args.out_size)
-	net = Net(n_feature=1, n_hidden=10, n_output=1)
-	print(net)  # net architecture
+	# input_X has 2 cols;
+	# hidden1 has 10 cols? 10 rows?
+	# hidden2 has 2 cols? 2 rows?
+	net = Net(n_feature=2, n_hidden=10, n_output=2)
 
-	# lr = args.lr
-	optimizer = torch.optim.SGD(net.parameters(), lr=0.5)
+	# set optimizer and lr
+	optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
 
-	loss_func = torch.nn.MSELoss()
+	# CrossEntropyLoss for classification
+	loss_func = torch.nn.CrossEntropyLoss()
+
 	return (net, optimizer, loss_func)
 
 def saveplots(args, param_names, param_values):
@@ -107,7 +130,7 @@ def saveplots(args, param_names, param_values):
 	    if param_names[param_index] == 'loss':
 
 			# subplot: num_row_img, num_col_img
-	        num_img_row_col == 1
+	        num_img_row_col = 1
 	        s2 = 1
 
 		# for all other param, if dim == 2
@@ -126,7 +149,7 @@ def saveplots(args, param_names, param_values):
 		# for all other param, if dim == 1
 	    elif len(param.size()) == 1:
 			# set subplot num_row_img == 1
-	        num_img_row_col == 1
+	        num_img_row_col = 1
 
 	        s1 = len(param)
 	        s2 = 1
@@ -159,6 +182,7 @@ def saveplots(args, param_names, param_values):
 	            ax.set_ylim((0,max(param[1])))
 				# set size, color of loss
 	            ax.set_title("loss: %.4f" % param[1][-1], fontdict={'size': 8, 'color':  'black'})
+
 
 	            fig.add_subplot(ax)
 
@@ -208,7 +232,7 @@ def display(args, param_names, param_values):
 	    if param_names[param_index] == 'loss':
 
 			# subplot: num_row_img, num_col_img
-	        num_img_row_col == 1
+	        num_img_row_col = 1
 	        s2 = 1
 
 		# for all other param, if dim == 2
@@ -227,7 +251,7 @@ def display(args, param_names, param_values):
 		# for all other param, if dim == 1
 	    elif len(param.size()) == 1:
 			# set subplot num_row_img == 1
-	        num_img_row_col == 1
+	        num_img_row_col = 1
 
 	        s1 = len(param)
 	        s2 = 1
@@ -240,6 +264,9 @@ def display(args, param_names, param_values):
 	        img_wh = math.ceil(math.sqrt(s1))
 
 	        missing_pix = img_wh*img_wh - s1
+
+			# both inputs must be same type, mostly torch.FloatTensor
+			# for classification y label, set it from LongTensor back to FloatTensor in param_values stage
 	        param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
 
 		# create sub-subplots grid on a subplot
@@ -293,7 +320,6 @@ def train(args):
 	# prepare dataset
 	x, y = prepareData(args)
 
-	net=None
 	# build net
 	net, optimizer, loss_func = build_net(args)
 
@@ -330,7 +356,9 @@ def train(args):
 
 			param_values.insert(2, layer1.data)
 			param_values.append(prediction.data)
-			param_values.insert(0, y.data)
+			# set y label (classification) from LongTensor to FloatTensor
+			# for later operations (inputs must have same type to operate)
+			param_values.insert(0, y.data.type(torch.FloatTensor))
 			param_values.insert(0, x.data)
 
 			# losses.append(loss.data[0])
@@ -366,8 +394,8 @@ def train_again(args):
 	previous_steps = steps[-1]
 
 	# build workflow
-	optimizer = torch.optim.SGD(net.parameters(), lr=0.5)
-	loss_func = torch.nn.MSELoss()
+	optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
+	loss_func = torch.nn.CrossEntropyLoss()
 
 	# train
 	if args.display:
@@ -402,7 +430,7 @@ def train_again(args):
 
 			param_values.insert(2, layer1.data)
 			param_values.append(prediction.data)
-			param_values.insert(0, y.data)
+			param_values.insert(0, y.data.type(torch.FloatTensor))
 			param_values.insert(0, x.data)
 
 			param_names.append("loss")
@@ -433,51 +461,49 @@ def build_parser():
 	# create a command line function
 	subparsers = parser.add_subparsers(dest='cmd', help='Sub-command help.')
 
-	# the command line function defined
+	#########################################################
+	subparser = subparsers.add_parser('prepareData', help='Preprocess dataset for training')
+	subparser.set_defaults(func=prepareData)
+
+	#########################################################
+	subparser = subparsers.add_parser('build_net', help='Build network')
+	subparser.set_defaults(func=build_net)
+
+	#########################################################
+	subparser = subparsers.add_parser('img2gif', help='conver images to gif with 3 speeds')
+	subparser.set_defaults(func=img2gif)
+
+	#########################################################
 	subparser = subparsers.add_parser('train', help='Trains a model for the first time.')
-
-	# the command line function's arguments
-	subparser.add_argument('-d', '--display', action='store_true',
-		help='Plot whole process while training')
-
-	subparser.add_argument('-net', '--net_path', required=True,
-	                    help="Path to save neuralnet model")
-
+	# add args to train function
+	subparser.add_argument('-d', '--display', action='store_true', help='Plot whole process while training')
+	subparser.add_argument('-net', '--net_path', required=True, help="Path to save neuralnet model")
 	subparser.add_argument('-log', '--log_path', required=True, help="Path to save log information: losses, steps")
-
 	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
-
-	# input Int
-	subparser.add_argument('-num', '--num_epochs', type=int, default=100,
-	                    help="Number of epochs to train this time")
-
+	subparser.add_argument('-num', '--num_epochs', type=int, default=100, help="Number of epochs to train this time")
 	subparser.add_argument('-s', '--selection',
 		choices=['train', 'validate', 'test', 'evaluate', 'auto'],
 		default='auto', help='Try to produce data corresponding to a specific '
 			'variation of the model.')
-
 	subparser.set_defaults(func=train)
 
+
+#########################################################
 	# the command line function defined as train_again
 	subparser = subparsers.add_parser('train_again', help='Trains a model.')
-
 	subparser.add_argument('-d', '--display', action='store_true', help='Plot whole process while training')
-
 	subparser.add_argument('-net', '--net_path', required=True, help="Path to load and update neuralnet model")
-
 	subparser.add_argument('-log', '--log_path', required=True, help="Path to load and update log information: losses, steps")
-
 	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
-
 	subparser.add_argument('-num', '--num_epochs', type=int, default=100,
 	                    help="Number of epochs to train this time")
-
 	subparser.set_defaults(func=train_again)
+
 
 	return parser, subparsers
 
 def img2gif(args):
-	os.chdir('/Users/Natsume/Downloads/temp_folders/103')
+	os.chdir('/Users/Natsume/Downloads/temp_folders/302')
 
 	# epoch_%d0.png: only takes epoch_0|10|20|30...|100|110
 	subprocess.call(['ffmpeg', '-i', 'epoch_%d5.png', 'output.avi'])
