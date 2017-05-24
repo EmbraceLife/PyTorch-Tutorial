@@ -13,6 +13,17 @@ alias opt_param optimizer.param_groups[0]['params'][%1]
 alias opt_grad optimizer.param_groups[0]['params'][%1].grad
 """
 
+"""
+## to display plotting
+python -m pdb tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -d
+
+## to save plots
+python -m pdb tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103
+
+## continue to train (save plots)
+python -m pdb tutorial-contents/103_argparse_train_again.py train_again -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103
+"""
+
 ###########################
 # style from ONMT combined with kur style
 ###########################
@@ -322,8 +333,8 @@ def train(args):
 			param_values.insert(0, y.data)
 			param_values.insert(0, x.data)
 
-			losses.append(loss.data[0])
-			steps.append(t)
+			# losses.append(loss.data[0])
+			# steps.append(t)
 			param_names.append("loss")
 			param_values.append([steps, losses])
 
@@ -344,10 +355,70 @@ def train_again(args):
 	""" Trains a model.
 	"""
 	# prepare dataset
+	x, y = prepareData(args)
+
 	# load net and log
+	net = torch.load(args.net_path)
+	steps, losses = torch.load(args.log_path)
+
+	previous_steps = steps[-1]
+
 	# build workflow
+	optimizer = torch.optim.SGD(net.parameters(), lr=0.5)
+	loss_func = torch.nn.MSELoss()
+
 	# train
-	# update net and log
+	if args.display:
+		plt.ion()
+
+	for t in range(100):
+
+		layer1, prediction = net(x)
+		loss = loss_func(prediction, y)
+		optimizer.zero_grad()
+		loss.backward()
+		optimizer.step()
+
+		# plots and save every 5 steps
+		if t % 5 == 0:
+			# add new loss onto the list losses
+			losses.append(loss.data.numpy().tolist()[0])
+			# add newly trained steps from previous_steps
+			# do not add 1 as we start training at epoch_0.png
+			steps.append(previous_steps+t)
+
+			param_names = []
+			param_values = []
+			for k, v in net.state_dict().items():
+			    param_names.append(k)
+			    param_values.append(v)
+
+			param_names.insert(2, "h-layer1")
+			param_names.append("pred_layer")
+			param_names.insert(0, "y")
+			param_names.insert(0, "x")
+
+			param_values.insert(2, layer1.data)
+			param_values.append(prediction.data)
+			param_values.insert(0, y.data)
+			param_values.insert(0, x.data)
+
+			param_names.append("loss")
+			param_values.append([steps, losses])
+
+			if args.display:
+				display(args, param_names, param_values)
+
+			else:
+				saveplots(args, param_names, param_values)
+
+	if args.display:
+		plt.ioff()
+	else:
+		# update net and log
+		torch.save(net, args.net_path)
+		torch.save((steps, losses), args.log_path)
+
 
 def build_parser():
 	""" Constructs an argument parser and returns the parsed arguments.
@@ -386,15 +457,20 @@ def build_parser():
 	# the command line function defined as train_again
 	subparser = subparsers.add_parser('train_again', help='Trains a model.')
 
-	subparser.add_argument('-ion', action='store_true', help='Plot whole process while training')
+	subparser.add_argument('-d', '--display', action='store_true', help='Plot whole process while training')
 
 	subparser.add_argument('-net', '--net_path', required=True, help="Path to load and update neuralnet model")
 
 	subparser.add_argument('-log', '--log_path', required=True, help="Path to load and update log information: losses, steps")
 
+	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
+
 	subparser.set_defaults(func=train_again)
 
 	return parser, subparsers
+
+def img2gif(args):
+	pass
 
 def parse_args(parser):
 	""" Parses command-line arguments.
