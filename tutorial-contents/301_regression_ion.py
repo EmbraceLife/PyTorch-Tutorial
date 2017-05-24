@@ -260,15 +260,18 @@ subprocess.call(['ffmpeg', '-i', 'epoch_%d0.png', 'output.avi'])
 http://hamelot.io/visualization/using-ffmpeg-to-convert-a-set-of-images-into-a-video/
 # it must be %d0.png, not %d.png, %d5.png seems fine
 ffmpeg -i epoch_%d0.png output.avi
+subprocess.call(['ffmpeg', '-i', 'epoch_%d0.png', 'output.avi'])
 
 # to slowdown video
 https://trac.ffmpeg.org/wiki/How%20to%20speed%20up%20/%20slow%20down%20a%20video
 ffmpeg -i output.avi -filter:v "setpts=4.0*PTS" output_down.avi
+subprocess.call(['ffmpeg', '-i', 'output.avi', '-filter:v', 'setpts=4.0*PTS', 'output_down.avi'])
 
 # to speed up a video
 ffmpeg -i output.avi -r 16 -filter:v "setpts=0.25*PTS" output_up.avi
+subprocess.call(['ffmpeg', '-i', 'output.avi', '-r', '16', '-filter:v', 'setpts=0.25*PTS', 'output_up.avi'])
 
 # convert video to gif
 ffmpeg -i output_down.avi out_down.gif
-
+subprocess.call(['ffmpeg', '-i', 'output_down.avi', 'out_down.gif'])
 """

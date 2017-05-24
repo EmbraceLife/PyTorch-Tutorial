@@ -18,10 +18,10 @@ alias opt_grad optimizer.param_groups[0]['params'][%1].grad
 python -m pdb tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -d
 
 ## to save plots
-python -m pdb tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103
+python -m pdb tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -num 200
 
 ## continue to train (save plots)
-python -m pdb tutorial-contents/103_argparse_train_again.py train_again -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103
+python -m pdb tutorial-contents/103_argparse_train_again.py train_again -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -num 200
 """
 
 ###########################
@@ -304,7 +304,7 @@ def train(args):
 	if args.display:
 		plt.ion()
 
-	for t in range(100):
+	for t in range(args.num_epochs):
 
 		layer1, prediction = net(x)
 		loss = loss_func(prediction, y)
@@ -350,6 +350,8 @@ def train(args):
 		# save net and log
 		torch.save(net, args.net_path)
 		torch.save((steps, losses), args.log_path)
+		# convert saved images to gif (speed up, down, normal versions)
+		img2gif(args)
 
 def train_again(args):
 	""" Trains a model.
@@ -371,7 +373,7 @@ def train_again(args):
 	if args.display:
 		plt.ion()
 
-	for t in range(100):
+	for t in range(args.num_epochs):
 
 		layer1, prediction = net(x)
 		loss = loss_func(prediction, y)
@@ -418,6 +420,8 @@ def train_again(args):
 		# update net and log
 		torch.save(net, args.net_path)
 		torch.save((steps, losses), args.log_path)
+		# convert saved images to gif (speed up, down, normal versions)
+		img2gif(args)
 
 
 def build_parser():
@@ -444,8 +448,8 @@ def build_parser():
 	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
 
 	# input Int
-	subparser.add_argument('-input_int', type=int, default=50,
-	                    help="Maximum sequence length")
+	subparser.add_argument('-num', '--num_epochs', type=int, default=100,
+	                    help="Number of epochs to train this time")
 
 	subparser.add_argument('-s', '--selection',
 		choices=['train', 'validate', 'test', 'evaluate', 'auto'],
@@ -465,12 +469,24 @@ def build_parser():
 
 	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
 
+	subparser.add_argument('-num', '--num_epochs', type=int, default=100,
+	                    help="Number of epochs to train this time")
+
 	subparser.set_defaults(func=train_again)
 
 	return parser, subparsers
 
 def img2gif(args):
-	pass
+	os.chdir('/Users/Natsume/Downloads/temp_folders/103')
+
+	# epoch_%d0.png: only takes epoch_0|10|20|30...|100|110
+	subprocess.call(['ffmpeg', '-i', 'epoch_%d0.png', 'output.avi'])
+	subprocess.call(['ffmpeg', '-i', 'output.avi', '-filter:v', 'setpts=4.0*PTS', 'output_down.avi'])
+	subprocess.call(['ffmpeg', '-i', 'output.avi', '-r', '16', '-filter:v', 'setpts=0.25*PTS', 'output_up.avi'])
+	subprocess.call(['ffmpeg', '-i', 'output_down.avi', 'out_down.gif'])
+	subprocess.call(['ffmpeg', '-i', 'output_up.avi', 'out_up.gif'])
+	subprocess.call(['ffmpeg', '-i', 'output.avi', 'out.gif'])
+
 
 def parse_args(parser):
 	""" Parses command-line arguments.
