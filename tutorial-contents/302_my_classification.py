@@ -17,6 +17,10 @@ alias opt_grad optimizer.param_groups[0]['params'][%1].grad
 ## View prepared dataset (test prepareData)
 python -m pdb tutorial-contents/302_my_classification.py prepareData
 
+## build a net (test)
+python -m pdb tutorial-contents/302_my_classification.py build_net
+
+
 ## to display plotting
 python -m pdb tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -d
 
@@ -25,6 +29,9 @@ python tutorial-contents/302_my_classification.py train -net /Users/Natsume/Down
 
 ## continue to train (save plots), without pdb
 python tutorial-contents/302_my_classification.py train_again -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -num 200
+
+## convert images to gif with 3 speeds
+python tutorial-contents/302_my_classification.py img2gif
 """
 
 
@@ -66,9 +73,8 @@ def prepareData(args):
 	# conver tensors to variables
 	x, y = Variable(x), Variable(y)
 
-
-	plt.scatter(x.data.numpy()[:, 0], x.data.numpy()[:, 1], c=y.data.numpy(), s=100, lw=0, cmap='RdYlGn')
-	plt.show()
+	# plt.scatter(x.data.numpy()[:, 0], x.data.numpy()[:, 1], c=y.data.numpy(), s=100, lw=0, cmap='RdYlGn')
+	# plt.show()
 
 	return (x, y)
 
@@ -108,7 +114,7 @@ def build_net(args):
 
 	return (net, optimizer, loss_func)
 
-def saveplots(args, param_names, param_values):
+def saveplots(args, param_names, param_values, net):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -116,7 +122,10 @@ def saveplots(args, param_names, param_values):
 	fig = plt.figure(1, figsize=(6, 6))
 
 	epoch = param_values[-1][0][-1]
-	fig.suptitle("x, y, 1-d regression, epoch:"+str(epoch), fontsize="x-large")
+
+	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
+	# remove 'Net (' and '\n)' to print title nicely
+	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
@@ -210,7 +219,7 @@ def saveplots(args, param_names, param_values):
 	plt.clf()
 
 # just plotting without saving images
-def display(args, param_names, param_values):
+def display(args, param_names, param_values, net):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -218,7 +227,10 @@ def display(args, param_names, param_values):
 	fig = plt.figure(1, figsize=(6, 6))
 
 	epoch = param_values[-1][0][-1]
-	fig.suptitle("x, y, 1-d regression, epoch:"+str(epoch), fontsize="x-large")
+
+	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
+	# remove 'Net (' and '\n)' to print title nicely
+	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
@@ -367,10 +379,10 @@ def train(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values)
+				display(args, param_names, param_values, net)
 
 			else:
-				saveplots(args, param_names, param_values)
+				saveplots(args, param_names, param_values, net)
 
 	if args.display:
 		plt.ioff()
@@ -379,7 +391,7 @@ def train(args):
 		torch.save(net, args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
-		img2gif(args)
+		# img2gif(args)
 
 def train_again(args):
 	""" Trains a model.
@@ -437,10 +449,10 @@ def train_again(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values)
+				display(args, param_names, param_values, net)
 
 			else:
-				saveplots(args, param_names, param_values)
+				saveplots(args, param_names, param_values, net)
 
 	if args.display:
 		plt.ioff()
@@ -449,7 +461,7 @@ def train_again(args):
 		torch.save(net, args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
-		img2gif(args)
+		# img2gif(args)
 
 
 def build_parser():

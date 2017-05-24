@@ -15,13 +15,16 @@ alias opt_grad optimizer.param_groups[0]['params'][%1].grad
 
 """
 ## to display plotting
-python -m pdb tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -d
+python -m pdb tutorial-contents/301_my_regression.py train -net /Users/Natsume/Downloads/temp_folders/301/net.pkl -log /Users/Natsume/Downloads/temp_folders/301/log.pkl -p /Users/Natsume/Downloads/temp_folders/301 -d
 
 ## to save plots (without pdb)
-python tutorial-contents/103_argparse_train_again.py train -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -num 200
+python tutorial-contents/301_my_regression.py train -net /Users/Natsume/Downloads/temp_folders/301/net.pkl -log /Users/Natsume/Downloads/temp_folders/301/log.pkl -p /Users/Natsume/Downloads/temp_folders/301 -num 200
 
 ## continue to train (save plots), without pdb
-python tutorial-contents/103_argparse_train_again.py train_again -net /Users/Natsume/Downloads/temp_folders/103/net.pkl -log /Users/Natsume/Downloads/temp_folders/103/log.pkl -p /Users/Natsume/Downloads/temp_folders/103 -num 200
+python tutorial-contents/301_my_regression.py train_again -net /Users/Natsume/Downloads/temp_folders/301/net.pkl -log /Users/Natsume/Downloads/temp_folders/301/log.pkl -p /Users/Natsume/Downloads/temp_folders/301 -num 200
+
+## convert images to gif with 3 speeds
+python tutorial-contents/301_my_regression.py img2gif
 """
 
 ###########################
@@ -85,7 +88,7 @@ def build_net(args):
 	loss_func = torch.nn.MSELoss()
 	return (net, optimizer, loss_func)
 
-def saveplots(args, param_names, param_values):
+def saveplots(args, param_names, param_values, net):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -93,7 +96,10 @@ def saveplots(args, param_names, param_values):
 	fig = plt.figure(1, figsize=(6, 6))
 
 	epoch = param_values[-1][0][-1]
-	fig.suptitle("x, y, 1-d regression, epoch:"+str(epoch), fontsize="x-large")
+
+	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
+	# remove 'Net (' and '\n)' to print title nicely
+	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
@@ -186,7 +192,7 @@ def saveplots(args, param_names, param_values):
 	plt.clf()
 
 # just plotting without saving images
-def display(args, param_names, param_values):
+def display(args, param_names, param_values, net):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -194,7 +200,11 @@ def display(args, param_names, param_values):
 	fig = plt.figure(1, figsize=(6, 6))
 
 	epoch = param_values[-1][0][-1]
-	fig.suptitle("x, y, 1-d regression, epoch:"+str(epoch), fontsize="x-large")
+
+	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
+	# remove 'Net (' and '\n)' to print title nicely
+	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
+
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
@@ -339,10 +349,10 @@ def train(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values)
+				display(args, param_names, param_values, net)
 
 			else:
-				saveplots(args, param_names, param_values)
+				saveplots(args, param_names, param_values, net)
 
 	if args.display:
 		plt.ioff()
@@ -351,7 +361,7 @@ def train(args):
 		torch.save(net, args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
-		img2gif(args)
+		# img2gif(args)
 
 def train_again(args):
 	""" Trains a model.
@@ -409,10 +419,10 @@ def train_again(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values)
+				display(args, param_names, param_values, net)
 
 			else:
-				saveplots(args, param_names, param_values)
+				saveplots(args, param_names, param_values, net)
 
 	if args.display:
 		plt.ioff()
@@ -421,7 +431,7 @@ def train_again(args):
 		torch.save(net, args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
-		img2gif(args)
+		# img2gif(args)
 
 
 def build_parser():
@@ -433,51 +443,50 @@ def build_parser():
 	# create a command line function
 	subparsers = parser.add_subparsers(dest='cmd', help='Sub-command help.')
 
-	# the command line function defined
+	#########################################################
+	subparser = subparsers.add_parser('prepareData', help='Preprocess dataset for training')
+	subparser.set_defaults(func=prepareData)
+
+	#########################################################
+	subparser = subparsers.add_parser('build_net', help='Build network')
+	subparser.set_defaults(func=build_net)
+
+	#########################################################
+	subparser = subparsers.add_parser('img2gif', help='conver images to gif with 3 speeds')
+	subparser.set_defaults(func=img2gif)
+
+	#########################################################
 	subparser = subparsers.add_parser('train', help='Trains a model for the first time.')
-
-	# the command line function's arguments
-	subparser.add_argument('-d', '--display', action='store_true',
-		help='Plot whole process while training')
-
-	subparser.add_argument('-net', '--net_path', required=True,
-	                    help="Path to save neuralnet model")
-
+	# add args to train function
+	subparser.add_argument('-d', '--display', action='store_true', help='Plot whole process while training')
+	subparser.add_argument('-net', '--net_path', required=True, help="Path to save neuralnet model")
 	subparser.add_argument('-log', '--log_path', required=True, help="Path to save log information: losses, steps")
-
 	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
-
-	# input Int
-	subparser.add_argument('-num', '--num_epochs', type=int, default=100,
-	                    help="Number of epochs to train this time")
-
+	subparser.add_argument('-num', '--num_epochs', type=int, default=100, help="Number of epochs to train this time")
 	subparser.add_argument('-s', '--selection',
 		choices=['train', 'validate', 'test', 'evaluate', 'auto'],
 		default='auto', help='Try to produce data corresponding to a specific '
 			'variation of the model.')
-
 	subparser.set_defaults(func=train)
 
+
+#########################################################
 	# the command line function defined as train_again
 	subparser = subparsers.add_parser('train_again', help='Trains a model.')
-
 	subparser.add_argument('-d', '--display', action='store_true', help='Plot whole process while training')
-
 	subparser.add_argument('-net', '--net_path', required=True, help="Path to load and update neuralnet model")
-
 	subparser.add_argument('-log', '--log_path', required=True, help="Path to load and update log information: losses, steps")
-
 	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
-
 	subparser.add_argument('-num', '--num_epochs', type=int, default=100,
 	                    help="Number of epochs to train this time")
-
 	subparser.set_defaults(func=train_again)
+
 
 	return parser, subparsers
 
+
 def img2gif(args):
-	os.chdir('/Users/Natsume/Downloads/temp_folders/103')
+	os.chdir('/Users/Natsume/Downloads/temp_folders/301')
 
 	# epoch_%d0.png: only takes epoch_0|10|20|30...|100|110
 	subprocess.call(['ffmpeg', '-i', 'epoch_%d5.png', 'output.avi'])
