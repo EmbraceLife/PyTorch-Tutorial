@@ -41,21 +41,21 @@ def build_parser():
 	subparsers = parser.add_subparsers(dest='cmd', help='Sub-command help.')
 
 	# the command line function defined
-	subparser = subparsers.add_parser('train', help='Trains a model.')
+	subparser = subparsers.add_parser('train', help='Trains a model for the first time.')
 
 	# the command line function's arguments
-	subparser.add_argument('--step', action='store_true',
-		help='Interactive debug; prompt user before submitting each batch.')
+	subparser.add_argument('-ion', action='store_true',
+		help='Plot whole process while training')
 
-	subparser.add_argument('-train_src', required=True,
-	                    help="Path to the training source data")
+	subparser.add_argument('-net', '--net_path', required=True,
+	                    help="Path to save neuralnet model")
 
-	subparser.add_argument('-src_vocab', help="Path to an existing source vocabulary")
+	subparser.add_argument('-log', '--log_path', required=True, help="Path to save log information: losses, steps")
 	# input Int
-	subparser.add_argument('-seq_length', type=int, default=50,
+	subparser.add_argument('-input_int', type=int, default=50,
 	                    help="Maximum sequence length")
 
-	subparser.add_argument('-t', '--target',
+	subparser.add_argument('-s', '--selection',
 		choices=['train', 'validate', 'test', 'evaluate', 'auto'],
 		default='auto', help='Try to produce data corresponding to a specific '
 			'variation of the model.')
@@ -64,6 +64,13 @@ def build_parser():
 
 	# the command line function defined as train_again
 	subparser = subparsers.add_parser('train_again', help='Trains a model.')
+
+	subparser.add_argument('-ion', action='store_true', help='Plot whole process while training')
+
+	subparser.add_argument('-net', '--net_path', required=True, help="Path to load and update neuralnet model")
+
+	subparser.add_argument('-log', '--log_path', required=True, help="Path to load and update log information: losses, steps")
+
 	subparser.set_defaults(func=train_again)
 
 	return parser, subparsers
