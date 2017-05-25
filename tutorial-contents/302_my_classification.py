@@ -24,7 +24,15 @@ python -m pdb tutorial-contents/302_my_classification.py build_net
 ## to display plotting
 python -m pdb tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -d
 
-## to save plots (without pdb)
+## to save full epoch training and plots
+python tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302noshuffle/net.pkl -log /Users/Natsume/Downloads/temp_folders/302noshuffle/log.pkl -p /Users/Natsume/Downloads/temp_folders/302noshuffle -num 200
+
+## continue to train with full epoch and plots
+python tutorial-contents/302_my_classification.py train_again -net /Users/Natsume/Downloads/temp_folders/302noshuffle/net.pkl -log /Users/Natsume/Downloads/temp_folders/302noshuffle/log.pkl -p /Users/Natsume/Downloads/temp_folders/302noshuffle -num 200
+
+python tutorial-contents/302_my_classification.py img2gif -p /Users/Natsume/Downloads/temp_folders/302noshuffle
+
+## to save batch training and plots
 python tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -num 200
 
 ## continue to train (save plots), without pdb
@@ -40,6 +48,7 @@ import sys
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
+import torch.utils.data as Data
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import math
@@ -71,12 +80,25 @@ def prepareData(args):
 	y = torch.cat((y0, y1), ).type(torch.LongTensor)
 
 	# conver tensors to variables
-	x, y = Variable(x), Variable(y)
+	x_v, y_v = Variable(x), Variable(y)
 
 	# plt.scatter(x.data.numpy()[:, 0], x.data.numpy()[:, 1], c=y.data.numpy(), s=100, lw=0, cmap='RdYlGn')
 	# plt.show()
 
-	return (x, y)
+	# convert dataset into batches
+	torch_dataset = Data.TensorDataset(data_tensor=x, target_tensor=y)
+
+	# put whole dataset into batches
+	loader = Data.DataLoader(
+	    dataset=torch_dataset,      # torch TensorDataset format
+		# make smaller batch_size and make shuffle batches, can make loss curve very very wiggy
+	    batch_size=100,
+	    shuffle=False,               # random shuffle for training
+	    num_workers=2,              # subprocesses for loading data
+	    drop_last=False				# True: drop smaller remaining data; False: keep smaller remaining data
+	)
+
+	return (x_v, y_v, loader)
 
 ######################################################
 # move Net in global env due to AttributeError: Can't pickle local object 'build_net.<locals>.Net'
@@ -336,7 +358,7 @@ def train(args):
 	""" Trains a model.
 	"""
 	# prepare dataset
-	x, y = prepareData(args)
+	x, y, loader = prepareData(args)
 
 	# build net
 	net, optimizer, loss_func, net2pp = build_net(args)
@@ -348,18 +370,28 @@ def train(args):
 	if args.display:
 		plt.ion()
 
-	for t in range(args.num_epochs):
+	# set t to epoch_idx
+	for epoch_idx in range(args.num_epochs):
 
-		layer1, prediction = net(x)
-		loss = loss_func(prediction, y)
-		optimizer.zero_grad()
-		loss.backward()
-		optimizer.step()
+		# loss value has to be carried in and out
+		loss = None
+		# batch_idx of an epoch
+		for batch_idx, (batch_x, batch_y) in enumerate(loader):
 
-		# plots and save every 5 steps
-		if t % 5 == 0:
+			b_x = Variable(batch_x)
+			b_y = Variable(batch_y)
+
+			layer1, prediction = net(b_x)
+			loss = loss_func(prediction, b_y)
+			optimizer.zero_grad()
+			loss.backward()
+			optimizer.step()
+
+		# plots and save every 5 steps or epochs
+		# push it inner tab to plot and save every 5 batches for large data
+		if epoch_idx % 5 == 0:
 			losses.append(loss.data.numpy().tolist()[0])
-			steps.append(t)
+			steps.append(epoch_idx)
 
 			param_names = []
 			param_values = []
@@ -376,6 +408,7 @@ def train(args):
 			param_values.append(prediction.data)
 			# set y label (classification) from LongTensor to FloatTensor
 			# for later operations (inputs must have same type to operate)
+			# we are going to plot entire x, y not a single sample
 			param_values.insert(0, y.data.type(torch.FloatTensor))
 			param_values.insert(0, x.data)
 
@@ -403,7 +436,7 @@ def train_again(args):
 	""" Trains a model.
 	"""
 	# prepare dataset
-	x, y = prepareData(args)
+	x, y, loader = prepareData(args)
 
 	# load net and log
 	net, net2pp = torch.load(args.net_path)
@@ -418,22 +451,28 @@ def train_again(args):
 	# train
 	if args.display:
 		plt.ion()
+	# set t to epoch_idx
+	for epoch_idx in range(args.num_epochs):
 
-	for t in range(args.num_epochs):
+		# loss value has to be carried in and out
+		loss = None
+		# batch_idx of an epoch
+		for batch_idx, (batch_x, batch_y) in enumerate(loader):
 
-		layer1, prediction = net(x)
-		loss = loss_func(prediction, y)
-		optimizer.zero_grad()
-		loss.backward()
-		optimizer.step()
+			b_x = Variable(batch_x)
+			b_y = Variable(batch_y)
+
+			layer1, prediction = net(b_x)
+			loss = loss_func(prediction, b_y)
+			optimizer.zero_grad()
+			loss.backward()
+			optimizer.step()
 
 		# plots and save every 5 steps
-		if t % 5 == 0:
-			# add new loss onto the list losses
+		if epoch_idx % 5 == 0:
 			losses.append(loss.data.numpy().tolist()[0])
-			# add newly trained steps from previous_steps
-			# do not add 1 as we start training at epoch_0.png
-			steps.append(previous_steps+t)
+			# add up onto previous_steps
+			steps.append(previous_steps+epoch_idx)
 
 			param_names = []
 			param_values = []
@@ -448,9 +487,14 @@ def train_again(args):
 
 			param_values.insert(2, layer1.data)
 			param_values.append(prediction.data)
+			# set y label (classification) from LongTensor to FloatTensor
+			# for later operations (inputs must have same type to operate)
+			# we are going to plot entire x, y not a single sample
 			param_values.insert(0, y.data.type(torch.FloatTensor))
 			param_values.insert(0, x.data)
 
+			# losses.append(loss.data[0])
+			# steps.append(t)
 			param_names.append("loss")
 			param_values.append([steps, losses])
 
@@ -463,12 +507,11 @@ def train_again(args):
 	if args.display:
 		plt.ioff()
 	else:
-		# update net and log
+		# save net and log
 		torch.save((net, net2pp), args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
 		# img2gif(args)
-
 
 def build_parser():
 	""" Constructs an argument parser and returns the parsed arguments.
@@ -489,6 +532,7 @@ def build_parser():
 
 	#########################################################
 	subparser = subparsers.add_parser('img2gif', help='conver images to gif with 3 speeds')
+	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
 	subparser.set_defaults(func=img2gif)
 
 	#########################################################
@@ -521,7 +565,7 @@ def build_parser():
 	return parser, subparsers
 
 def img2gif(args):
-	os.chdir('/Users/Natsume/Downloads/temp_folders/302')
+	os.chdir(args.plots_path)
 
 	# epoch_%d0.png: only takes epoch_0|10|20|30...|100|110
 	subprocess.call(['ffmpeg', '-i', 'epoch_%d5.png', 'output.avi'])
