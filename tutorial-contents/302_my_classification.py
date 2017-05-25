@@ -21,28 +21,25 @@ python -m pdb tutorial-contents/302_my_classification.py prepareData
 python -m pdb tutorial-contents/302_my_classification.py build_net
 
 
-## to display plotting
+## just display every steps in training (no saving plots)
 python -m pdb tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -d
 
-## to save full epoch training and plots
+## to save plots of training
 python tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302noshuffle/net.pkl -log /Users/Natsume/Downloads/temp_folders/302noshuffle/log.pkl -p /Users/Natsume/Downloads/temp_folders/302noshuffle -num 200
 
 ## continue to train with full epoch and plots
 python tutorial-contents/302_my_classification.py train_again -net /Users/Natsume/Downloads/temp_folders/302noshuffle/net.pkl -log /Users/Natsume/Downloads/temp_folders/302noshuffle/log.pkl -p /Users/Natsume/Downloads/temp_folders/302noshuffle -num 200
 
+## convert images to gif with 3 speeds
 python tutorial-contents/302_my_classification.py img2gif -p /Users/Natsume/Downloads/temp_folders/302noshuffle
 
-## to save batch training and plots
-python tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -num 200
+## all I need to do is to change some key source codes and get a new folder to save plots and net, losses, steps
 
-## continue to train (save plots), without pdb
-python tutorial-contents/302_my_classification.py train_again -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -num 200
-
-## convert images to gif with 3 speeds
-python tutorial-contents/302_my_classification.py img2gif
 """
 
-
+################################################
+# all libraires needed
+################################################
 import argparse
 import sys
 import torch
@@ -56,12 +53,15 @@ import numpy as np
 import os
 import subprocess
 
-
+################################################
+# prepare data
+################################################
 
 def prepareData(args):
-	""" Prepare dataset for training later: 1. return x, y as Variables; 2. args.view_data being true, we plot the prepared datasets; 3. args: can help do lots of things: shrink data, special treatment to data, ...
+	""" Prepare dataset for training later: 1. create x, y dataset; 2. make batches (shuffle, batch_size) 3. return x_v, y_v, loader
 	"""
-	torch.manual_seed(1)    # reproducible
+	# reproducible
+	torch.manual_seed(1)
 
 	# create tensor (100, 2) of 1s
 	n_data = torch.ones(100, 2)
@@ -82,6 +82,7 @@ def prepareData(args):
 	# conver tensors to variables
 	x_v, y_v = Variable(x), Variable(y)
 
+	## plot dataset
 	# plt.scatter(x.data.numpy()[:, 0], x.data.numpy()[:, 1], c=y.data.numpy(), s=100, lw=0, cmap='RdYlGn')
 	# plt.show()
 
@@ -100,40 +101,51 @@ def prepareData(args):
 
 	return (x_v, y_v, loader)
 
+
 ######################################################
+# create Net: network class
+######################################################
+
 # move Net in global env due to AttributeError: Can't pickle local object 'build_net.<locals>.Net'
 class Net(torch.nn.Module):
-    def __init__(self, n_feature, n_hidden, n_output):
-        super(Net, self).__init__()
+	""" 1. create __init__; 2. create forward()
+	"""
+	def __init__(self, n_feature, n_hidden, n_output):
+	    super(Net, self).__init__()
 	# 3 lines above are just template must have!!!
 
 		# build 2 hidden layers
-        self.hidden = torch.nn.Linear(n_feature, n_hidden)
-        self.out = torch.nn.Linear(n_hidden, n_output)
+	    self.hidden = torch.nn.Linear(n_feature, n_hidden)
+	    self.out = torch.nn.Linear(n_hidden, n_output)
 
 	# feed dataset to hidden layers and apply activation functions
-    def forward(self, x):
-        layer1 = F.relu(self.hidden(x))
-        prediction = self.out(layer1)
-        return layer1, prediction
+	def forward(self, x):
+		layer1 = F.relu(self.hidden(x))
+		prediction = self.out(layer1)
+
+		return layer1, prediction
 
 
 ######################################################
+# build network
+######################################################
+
 def build_net(args):
-	""" Build network: 1. Create Net Class with its forward pass; 2. instantiate a net; 3. build a optimizer box and loss box; 4. args: to bring in parameters for build nets
+	""" Build network: 1. instantiate a net; 2. build a optimizer box and loss box; 3. build net2pp for printing; 4. return (net, optimizer, loss_func, net2pp)
 	"""
 
 	# input_X has 2 cols;
 	# hidden1 has 10 cols? 10 rows?
 	# hidden2 has 2 cols? 2 rows?
+	# see from many examples
 	net = Net(n_feature=2, n_hidden=10, n_output=2)
 
 	# set optimizer and lr
 	optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
-
 	# CrossEntropyLoss for classification
 	loss_func = torch.nn.CrossEntropyLoss()
 
+	# build net2pp for printing (the same object as net)
 	net2pp = torch.nn.Sequential(
 	    torch.nn.Linear(2, 10),
 	    torch.nn.ReLU(),
@@ -142,52 +154,62 @@ def build_net(args):
 
 	return (net, optimizer, loss_func, net2pp)
 
+######################################################
+# create plots and save them during training
+######################################################
 def saveplots(args, param_names, param_values, net2pp):
+	""" 1. x, y, plot weights, biases, activations, losses; 2. save plots rather than display
+	"""
 
-	# fig: num_row_img, num_col_img
-	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
-
+	####################
+	# create figure and outer structure
+	####################
+	# create figure
 	fig = plt.figure(1, figsize=(6, 6))
-
+	# access the current epoch for plotting
 	epoch = param_values[-1][0][-1]
 
-	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
-	# remove 'Net (' and '\n)' to print title nicely
+	## create figure super title
+	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small", or 12
+	# remove 'Net (' or 'Sequential (' and '\n)' to print title nicely
 	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
-	# create subplots on fig
+
+	# fig's outer structure's num_row_img, num_col_img
+	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
+	# build outer structure
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
-
+	# count each layer index
 	param_index = 0
-
-	# set up s1, s2, num_img_row_col for diff param
+	# access each layer (weights, or biases, or activations, or loss)
 	for param in param_values:
 
-		# loss plotting is diff from all other param plotting
+		# for loss plot
 	    if param_names[param_index] == 'loss':
-
-			# subplot: num_row_img, num_col_img
+			# define loss plot parameters
+			# inner subplot has a single plot
+			# num_img_row_col: define how many inner subplots inside an outer subplot
 	        num_img_row_col = 1
 	        s2 = 1
 
-		# for all other param, if dim == 2
+		# for all other layer plot, if dim == 2
 	    elif len(param.size())==2:
-
+			# define layer plot parameters
 	        s1, s2 = param.size()
-
 			# if s2 is large, swap values between s1 and s2, make s1 larger
 	        if s1 < s2:
 	            num_img = s1
 	            s1 = s2
 	            s2 = num_img
-
+			# num_img_row_col: define how many inner subplots inside an outer subplot
 	        num_img_row_col = math.ceil(math.sqrt(s2))
 
-		# for all other param, if dim == 1
+		# for all other layer plot, if dim == 1
 	    elif len(param.size()) == 1:
+			# define layer plot parameters
 			# set subplot num_row_img == 1
+			# num_img_row_col: define how many inner subplots inside an outer subplot
 	        num_img_row_col = 1
-
 	        s1 = len(param)
 	        s2 = 1
 
@@ -195,18 +217,21 @@ def saveplots(args, param_names, param_values, net2pp):
 	        pass
 
 		# all param other than loss must have img_wh, param_padded
+		# in order to plot images from arrays
 	    if param_names[param_index] != 'loss':
+			# inside a outer subplot, get an inner subplot's width and height
 	        img_wh = math.ceil(math.sqrt(s1))
-
+			# how many pixel cells are needed to fill with zeros
 	        missing_pix = img_wh*img_wh - s1
+			# the filled new tensor for plot images
 	        param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
 
-		# create sub-subplots grid on a subplot
+		# create inner structure: for each outer subplot, create inner structure for a square of inner subplots
 	    inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
 
-		# loop every sub-subplots of a subplot or param
+		# loop every inner subplots
 	    for index in range(s2):
-
+			# get ax for inner subplot ready
 	        ax = plt.Subplot(fig, inner[index])
 
 			# plot loss
@@ -223,17 +248,16 @@ def saveplots(args, param_names, param_values, net2pp):
 
 	            fig.add_subplot(ax)
 
-			# plot other param other than loss
+			# plot other param or layer
 	        else:
-				# plot a single sub-subplot of subplot
+				# plot an inner subplot image
 	            ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
 
-				# if there more than 1 sub-subplots in a subplot
-				# where to draw title
+				# If there are more inner subplots, where to put subplot titles
 	            if s2 > 1:
 	                if index == int(num_img_row_col/2):
 	                    ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
-				# if just 1 sub-subplot in a subplot, use default title position
+				# where to subplot title when there is just 1 inner subplot
 	            else:
 	                ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
 	            ax.set_xticks(())
@@ -248,51 +272,58 @@ def saveplots(args, param_names, param_values, net2pp):
 
 # just plotting without saving images
 def display(args, param_names, param_values, net2pp):
+	""" 1. x, y, plot weights, biases, activations, losses; 2. just display the plotting without saving them
+	"""
 
-	# fig: num_row_img, num_col_img
-	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
-
+	####################
+	# create figure and outer structure
+	####################
+	# create figure
 	fig = plt.figure(1, figsize=(6, 6))
-
+	# access the current epoch for plotting
 	epoch = param_values[-1][0][-1]
 
-	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
-	# remove 'Net (' and '\n)' to print title nicely
+	## create figure super title
+	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small", or 12
+	# remove 'Net (' or 'Sequential (' and '\n)' to print title nicely
 	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
-	# create subplots on fig
+
+	# fig's outer structure's num_row_img, num_col_img
+	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
+	# build outer structure
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
-
+	# count each layer index
 	param_index = 0
-
-	# set up s1, s2, num_img_row_col for diff param
+	# access each layer (weights, or biases, or activations, or loss)
 	for param in param_values:
 
-		# loss plotting is diff from all other param plotting
+		# for loss plot
 	    if param_names[param_index] == 'loss':
-
-			# subplot: num_row_img, num_col_img
+			# define loss plot parameters
+			# inner subplot has a single plot
+			# num_img_row_col: define how many inner subplots inside an outer subplot
 	        num_img_row_col = 1
 	        s2 = 1
 
-		# for all other param, if dim == 2
+		# for all other layer plot, if dim == 2
 	    elif len(param.size())==2:
-
+			# define layer plot parameters
 	        s1, s2 = param.size()
-
 			# if s2 is large, swap values between s1 and s2, make s1 larger
 	        if s1 < s2:
 	            num_img = s1
 	            s1 = s2
 	            s2 = num_img
-
+			# num_img_row_col: define how many inner subplots inside an outer subplot
 	        num_img_row_col = math.ceil(math.sqrt(s2))
 
-		# for all other param, if dim == 1
+		# for all other layer plot, if dim == 1
 	    elif len(param.size()) == 1:
+			# define layer plot parameters
 			# set subplot num_row_img == 1
+			# num_img_row_col: define how many inner subplots inside an outer subplot
 	        num_img_row_col = 1
-
 	        s1 = len(param)
 	        s2 = 1
 
@@ -300,21 +331,21 @@ def display(args, param_names, param_values, net2pp):
 	        pass
 
 		# all param other than loss must have img_wh, param_padded
+		# in order to plot images from arrays
 	    if param_names[param_index] != 'loss':
+			# inside a outer subplot, get an inner subplot's width and height
 	        img_wh = math.ceil(math.sqrt(s1))
-
+			# how many pixel cells are needed to fill with zeros
 	        missing_pix = img_wh*img_wh - s1
-
-			# both inputs must be same type, mostly torch.FloatTensor
-			# for classification y label, set it from LongTensor back to FloatTensor in param_values stage
+			# the filled new tensor for plot images
 	        param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
 
-		# create sub-subplots grid on a subplot
+		# create inner structure: for each outer subplot, create inner structure for a square of inner subplots
 	    inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
 
-		# loop every sub-subplots of a subplot or param
+		# loop every inner subplots
 	    for index in range(s2):
-
+			# get ax for inner subplot ready
 	        ax = plt.Subplot(fig, inner[index])
 
 			# plot loss
@@ -328,19 +359,19 @@ def display(args, param_names, param_values, net2pp):
 				# set size, color of loss
 	            ax.set_title("loss: %.4f" % param[1][-1], fontdict={'size': 8, 'color':  'black'})
 
+
 	            fig.add_subplot(ax)
 
-			# plot other param other than loss
+			# plot other param or layer
 	        else:
-				# plot a single sub-subplot of subplot
+				# plot an inner subplot image
 	            ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
 
-				# if there more than 1 sub-subplots in a subplot
-				# where to draw title
+				# If there are more inner subplots, where to put subplot titles
 	            if s2 > 1:
 	                if index == int(num_img_row_col/2):
 	                    ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
-				# if just 1 sub-subplot in a subplot, use default title position
+				# where to subplot title when there is just 1 inner subplot
 	            else:
 	                ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
 	            ax.set_xticks(())
@@ -370,12 +401,13 @@ def train(args):
 	if args.display:
 		plt.ion()
 
-	# set t to epoch_idx
+	# for every epoch of training
 	for epoch_idx in range(args.num_epochs):
 
 		# loss value has to be carried in and out
 		loss = None
-		# batch_idx of an epoch
+
+		# traing model for every batch
 		for batch_idx, (batch_x, batch_y) in enumerate(loader):
 
 			b_x = Variable(batch_x)
@@ -388,11 +420,14 @@ def train(args):
 			optimizer.step()
 
 		# plots and save every 5 steps or epochs
-		# push it inner tab to plot and save every 5 batches for large data
+		# Note: push a tab when save every 5 batches rather than epoch
 		if epoch_idx % 5 == 0:
+
+			# every time when plotting, update losses and steps
 			losses.append(loss.data.numpy().tolist()[0])
 			steps.append(epoch_idx)
 
+			# every time when plotting, update values of x, y, weights, biases, activations, loss
 			param_names = []
 			param_values = []
 			for k, v in net.state_dict().items():
