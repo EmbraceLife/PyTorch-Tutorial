@@ -112,9 +112,15 @@ def build_net(args):
 	# CrossEntropyLoss for classification
 	loss_func = torch.nn.CrossEntropyLoss()
 
-	return (net, optimizer, loss_func)
+	net2pp = torch.nn.Sequential(
+	    torch.nn.Linear(2, 10),
+	    torch.nn.ReLU(),
+	    torch.nn.Linear(10, 2)
+	)
 
-def saveplots(args, param_names, param_values, net):
+	return (net, optimizer, loss_func, net2pp)
+
+def saveplots(args, param_names, param_values, net2pp):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -125,7 +131,7 @@ def saveplots(args, param_names, param_values, net):
 
 	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
 	# remove 'Net (' and '\n)' to print title nicely
-	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
+	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
@@ -219,7 +225,7 @@ def saveplots(args, param_names, param_values, net):
 	plt.clf()
 
 # just plotting without saving images
-def display(args, param_names, param_values, net):
+def display(args, param_names, param_values, net2pp):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -230,7 +236,7 @@ def display(args, param_names, param_values, net):
 
 	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
 	# remove 'Net (' and '\n)' to print title nicely
-	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
+	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
@@ -333,7 +339,7 @@ def train(args):
 	x, y = prepareData(args)
 
 	# build net
-	net, optimizer, loss_func = build_net(args)
+	net, optimizer, loss_func, net2pp = build_net(args)
 
 	# train
 	losses = []
@@ -379,16 +385,16 @@ def train(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values, net)
+				display(args, param_names, param_values, net2pp)
 
 			else:
-				saveplots(args, param_names, param_values, net)
+				saveplots(args, param_names, param_values, net2pp)
 
 	if args.display:
 		plt.ioff()
 	else:
 		# save net and log
-		torch.save(net, args.net_path)
+		torch.save((net, net2pp), args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
 		# img2gif(args)
@@ -400,7 +406,7 @@ def train_again(args):
 	x, y = prepareData(args)
 
 	# load net and log
-	net = torch.load(args.net_path)
+	net, net2pp = torch.load(args.net_path)
 	steps, losses = torch.load(args.log_path)
 
 	previous_steps = steps[-1]
@@ -449,16 +455,16 @@ def train_again(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values, net)
+				display(args, param_names, param_values, net2pp)
 
 			else:
-				saveplots(args, param_names, param_values, net)
+				saveplots(args, param_names, param_values, net2pp)
 
 	if args.display:
 		plt.ioff()
 	else:
 		# update net and log
-		torch.save(net, args.net_path)
+		torch.save((net, net2pp), args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
 		# img2gif(args)

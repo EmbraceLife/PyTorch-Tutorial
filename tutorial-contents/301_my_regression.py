@@ -14,6 +14,9 @@ alias opt_grad optimizer.param_groups[0]['params'][%1].grad
 """
 
 """
+## to build nets
+python -m pdb tutorial-contents/301_my_regression.py build_net
+
 ## to display plotting
 python -m pdb tutorial-contents/301_my_regression.py train -net /Users/Natsume/Downloads/temp_folders/301/net.pkl -log /Users/Natsume/Downloads/temp_folders/301/log.pkl -p /Users/Natsume/Downloads/temp_folders/301 -d
 
@@ -74,21 +77,30 @@ class Net(torch.nn.Module):
 
         return layer1, layer2
 
+
+
 def build_net(args):
 	""" Build network: 1. Create Net Class with its forward pass; 2. instantiate a net; 3. build a optimizer box and loss box; 4. args: to bring in parameters for build nets
 	"""
 
 	# Net(n_feature=args.input_size, n_hidden=args.hidden_size, n_output=args.out_size)
 	net = Net(n_feature=1, n_hidden=10, n_output=1)
-	print(net)  # net architecture
+	# print(net)  # net architecture
 
 	# lr = args.lr
 	optimizer = torch.optim.SGD(net.parameters(), lr=0.5)
 
 	loss_func = torch.nn.MSELoss()
-	return (net, optimizer, loss_func)
 
-def saveplots(args, param_names, param_values, net):
+	# build the same network for pprint for all layers including activations
+	net2pp = torch.nn.Sequential(
+	    torch.nn.Linear(1, 10),
+	    torch.nn.ReLU(),
+	    torch.nn.Linear(10, 1)
+	)
+	return (net, optimizer, loss_func, net2pp)
+
+def saveplots(args, param_names, param_values, net2pp):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -99,7 +111,7 @@ def saveplots(args, param_names, param_values, net):
 
 	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
 	# remove 'Net (' and '\n)' to print title nicely
-	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
+	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
 
@@ -192,7 +204,7 @@ def saveplots(args, param_names, param_values, net):
 	plt.clf()
 
 # just plotting without saving images
-def display(args, param_names, param_values, net):
+def display(args, param_names, param_values, net2pp):
 
 	# fig: num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -203,7 +215,7 @@ def display(args, param_names, param_values, net):
 
 	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small"
 	# remove 'Net (' and '\n)' to print title nicely
-	fig.suptitle("epoch:"+str(epoch)+" " + net.__repr__().replace("Net (", "").replace("\n)", ""), fontsize=8)
+	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
 
 	# create subplots on fig
 	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
@@ -305,7 +317,7 @@ def train(args):
 
 	net=None
 	# build net
-	net, optimizer, loss_func = build_net(args)
+	net, optimizer, loss_func, net2pp = build_net(args)
 
 	# train
 	losses = []
@@ -349,16 +361,16 @@ def train(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values, net)
+				display(args, param_names, param_values, net2pp)
 
 			else:
-				saveplots(args, param_names, param_values, net)
+				saveplots(args, param_names, param_values, net2pp)
 
 	if args.display:
 		plt.ioff()
 	else:
 		# save net and log
-		torch.save(net, args.net_path)
+		torch.save((net, net2pp), args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
 		# img2gif(args)
@@ -370,7 +382,7 @@ def train_again(args):
 	x, y = prepareData(args)
 
 	# load net and log
-	net = torch.load(args.net_path)
+	net, net2pp = torch.load(args.net_path)
 	steps, losses = torch.load(args.log_path)
 
 	previous_steps = steps[-1]
@@ -419,10 +431,10 @@ def train_again(args):
 			param_values.append([steps, losses])
 
 			if args.display:
-				display(args, param_names, param_values, net)
+				display(args, param_names, param_values, net2pp)
 
 			else:
-				saveplots(args, param_names, param_values, net)
+				saveplots(args, param_names, param_values, net2pp)
 
 	if args.display:
 		plt.ioff()
