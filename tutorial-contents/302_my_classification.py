@@ -133,6 +133,11 @@ class Net(torch.nn.Module):
 def build_net(args):
 	""" Build network: 1. instantiate a net; 2. build a optimizer box and loss box; 3. build net2pp for printing; 4. return (net, optimizer, loss_func, net2pp)
 	"""
+	######################
+	# hyper parameters:
+	learning_rate = 0.02
+	optimizer_select = "sgd" # or 'momentum', 'adam', 'rmsprop'
+	loss_select = "crossentropy" # or 'mse'
 
 	# input_X has 2 cols;
 	# hidden1 has 10 cols? 10 rows?
@@ -140,10 +145,35 @@ def build_net(args):
 	# see from many examples
 	net = Net(n_feature=2, n_hidden=10, n_output=2)
 
-	# set optimizer and lr
-	optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
+	######################
+	## select an optimizer
+	opt_SGD         = torch.optim.SGD(net_SGD.parameters(), lr=learning_rate)
+	opt_Momentum    = torch.optim.SGD(net_Momentum.parameters(), lr=learning_rate, momentum=0.8)
+	opt_RMSprop     = torch.optim.RMSprop(net_RMSprop.parameters(), lr=learning_rate, alpha=0.9)
+	opt_Adam        = torch.optim.Adam(net_Adam.parameters(), lr=learning_rate, betas=(0.9, 0.99))
+	optimizers = {'sgd':opt_SGD, 'momentum':opt_Momentum, 'rmsprop':opt_RMSprop, 'adam':opt_Adam}
+
+	# use args.optimizer to select an optimizer to use
+	# use args.lr to set learning rate
+	optimizer = None
+	for k, v in optimizers.items():
+		if optimizer_select == k:
+			optimizer = v
+
+
+	######################
+	## select a loss_func from 2 possible losses prepared below
+	# loss for regression
+	loss_mse = torch.nn.MSELoss()
 	# CrossEntropyLoss for classification
-	loss_func = torch.nn.CrossEntropyLoss()
+	loss_crossEntropy = torch.nn.CrossEntropyLoss()
+	# put all losses into a dict
+	loss_funcs = {'mse':loss_sme, 'crossentropy':loss_crossEntropy}
+	loss_func = None
+	for k, v in loss_funcs.items():
+		if loss_select == k:
+			loss_func = v
+
 
 	# build net2pp for printing (the same object as net)
 	net2pp = torch.nn.Sequential(
