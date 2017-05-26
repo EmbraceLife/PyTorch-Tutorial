@@ -147,10 +147,10 @@ def build_net(args):
 
 	######################
 	## select an optimizer
-	opt_SGD         = torch.optim.SGD(net_SGD.parameters(), lr=learning_rate)
-	opt_Momentum    = torch.optim.SGD(net_Momentum.parameters(), lr=learning_rate, momentum=0.8)
-	opt_RMSprop     = torch.optim.RMSprop(net_RMSprop.parameters(), lr=learning_rate, alpha=0.9)
-	opt_Adam        = torch.optim.Adam(net_Adam.parameters(), lr=learning_rate, betas=(0.9, 0.99))
+	opt_SGD         = torch.optim.SGD(net.parameters(), lr=learning_rate)
+	opt_Momentum    = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.8)
+	opt_RMSprop     = torch.optim.RMSprop(net.parameters(), lr=learning_rate, alpha=0.9)
+	opt_Adam        = torch.optim.Adam(net.parameters(), lr=learning_rate, betas=(0.9, 0.99))
 	optimizers = {'sgd':opt_SGD, 'momentum':opt_Momentum, 'rmsprop':opt_RMSprop, 'adam':opt_Adam}
 
 	# use args.optimizer to select an optimizer to use
@@ -168,7 +168,7 @@ def build_net(args):
 	# CrossEntropyLoss for classification
 	loss_crossEntropy = torch.nn.CrossEntropyLoss()
 	# put all losses into a dict
-	loss_funcs = {'mse':loss_sme, 'crossentropy':loss_crossEntropy}
+	loss_funcs = {'mse':loss_mse, 'crossentropy':loss_crossEntropy}
 	loss_func = None
 	for k, v in loss_funcs.items():
 		if loss_select == k:
