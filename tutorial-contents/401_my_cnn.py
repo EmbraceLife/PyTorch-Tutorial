@@ -22,13 +22,13 @@ python -m pdb tutorial-contents/401_my_cnn.py build_net
 
 
 ## just display every steps in training (no saving plots)
-python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 500 -num_batches 10 -num_epochs 1 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display
+python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display
 
 ## to save plots of training
-python tutorial-contents/401_my_cnn.py train -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -p /Users/Natsume/Downloads/temp_folders/401 -num_epochs 200
+python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401
 
 ## continue to train with full epoch and plots
-python tutorial-contents/401_my_cnn.py train_again -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -p /Users/Natsume/Downloads/temp_folders/401 -num 200
+python -m pdb tutorial-contents/401_my_cnn.py train_again -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401
 
 ## convert images to gif with 3 speeds
 python tutorial-contents/401_my_cnn.py img2gif -p /Users/Natsume/Downloads/temp_folders/401
@@ -252,116 +252,174 @@ def build_net(args):
 ######################################################
 # create plots and save them during training
 ######################################################
-def saveplots(args, param_names, param_values, net2pp):
+def saveplots(args, param_names, param_values, cnn):
 	""" 1. x, y, plot weights, biases, activations, losses; 2. save plots rather than display
 	"""
+
 
 	####################
 	# create figure and outer structure
 	####################
 	# create figure
 	fig = plt.figure(1, figsize=(6, 6))
+
+
+	#### write suptitle
 	# access the current epoch for plotting
 	epoch = param_values[-1][0][-1]
-
 	## create figure super title
-	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small", or 12
-	# remove 'Net (' or 'Sequential (' and '\n)' to print title nicely
-	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
+	# relu and maxpool have no weights, can be ignored to print
+	fig.suptitle("epoch:"+str(epoch)+" " + cnn.__repr__().replace("CNN (", "").replace("\n)", "").replace("\n", "").replace("(conv2)", "\n(conv2)").replace("(out)", "\n(out)"), fontsize=8)
 
-	# fig's outer structure's num_row_img, num_col_img
-	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
-	# build outer structure
-	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
+	#### outer_frame
+	# get outer grid, outer_grid_rows = outer_grid_cols = outer_grid
+	outer_grid = math.ceil(math.sqrt(len(param_names)))
+	# build outer_frame to hold outer images
+	outer_frame = gridspec.GridSpec(outer_grid, outer_grid)
 
-	# count each layer index
+	#### loop through each outer images
 	param_index = 0
-	# access each layer (weights, or biases, or activations, or loss)
+	# each outer_image is a param_values: input_image, w, b, activations, loss
 	for param in param_values:
 
-		# for loss plot
-	    if param_names[param_index] == 'loss':
-			# define loss plot parameters
-			# inner subplot has a single plot
-			# num_img_row_col: define how many inner subplots inside an outer subplot
-	        num_img_row_col = 1
-	        s2 = 1
-
-		# for all other layer plot, if dim == 2
-	    elif len(param.size())==2:
-			# define layer plot parameters
-	        s1, s2 = param.size()
-			# if s2 is large, swap values between s1 and s2, make s1 larger
-	        if s1 < s2:
-	            num_img = s1
-	            s1 = s2
-	            s2 = num_img
-			# num_img_row_col: define how many inner subplots inside an outer subplot
-	        num_img_row_col = math.ceil(math.sqrt(s2))
-
-		# for all other layer plot, if dim == 1
-	    elif len(param.size()) == 1:
-			# define layer plot parameters
-			# set subplot num_row_img == 1
-			# num_img_row_col: define how many inner subplots inside an outer subplot
-	        num_img_row_col = 1
-	        s1 = len(param)
-	        s2 = 1
-
-	    else:
-	        pass
-
-		# all param other than loss must have img_wh, param_padded
-		# in order to plot images from arrays
-	    if param_names[param_index] != 'loss':
-			# inside a outer subplot, get an inner subplot's width and height
-	        img_wh = math.ceil(math.sqrt(s1))
-			# how many pixel cells are needed to fill with zeros
-	        missing_pix = img_wh*img_wh - s1
-			# the filled new tensor for plot images
-	        param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
-
-		# create inner structure: for each outer subplot, create inner structure for a square of inner subplots
-	    inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
-
-		# loop every inner subplots
-	    for index in range(s2):
-			# get ax for inner subplot ready
-	        ax = plt.Subplot(fig, inner[index])
-
-			# plot loss
-	        if param_names[param_index] == 'loss':
-				# param[0]: list of t or steps
-				# param[1]: list of loss
-	            ax.plot(param[0], param[1], 'b-')
+		## build inner image for loss
+		if param_names[param_index] == 'loss':
+			# inner_grid for loss
+			inner_grid_loss = 1
+			num_inner_img = 1
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid_loss, inner_grid_loss, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
+				ax.plot(param[0], param[1], 'b-')
 				# set x-axis and y-axis range
-	            ax.set_xlim((0,max(param[0])))
-	            ax.set_ylim((0,max(param[1])))
+				ax.set_xlim((0,max(param[0])))
+				ax.set_ylim((0,max(param[1])))
 				# set size, color of loss
-	            ax.set_title("loss: %.4f" % param[1][-1], fontdict={'size': 8, 'color':  'black'})
+				ax.set_title("loss: %.4f" % param[1][-1], fontdict={'size': 8, 'color':  'black'})
+				fig.add_subplot(ax)
+
+		## build inner image for input_image
+		elif param_names[param_index] == 'image':
+			# inner_grid for loss
+			inner_grid_inputImage = 1
+			num_inner_img = 1
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid_inputImage, inner_grid_inputImage, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
+				ax.imshow(param[0], cmap='gray')
+
+				# set size, color of input image
+				ax.set_title(param_names[param_index]+": {}".format(param[0].shape), fontdict={'size': 8, 'color':  'black'})
+				ax.set_xticks(())
+				ax.set_yticks(())
+				fig.add_subplot(ax)
+
+		## build inner image for biases or activations with just 1-d
+		elif len(param.size()) == 1:
+
+			inner_grid = 1
+			num_inner_img = 1
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+
+			inner_img_width = math.ceil(math.sqrt(len(param)))
+			# how many pixel cells are needed to fill with zeros
+			missing_pix = inner_img_width*inner_img_width - len(param)
+			# the filled new tensor for plot images
+			param_padded = torch.cat((param.view(len(param),1), torch.zeros((missing_pix, 1))),0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
+
+				ax.imshow(param_padded.view(inner_img_width, inner_img_width).numpy(), cmap='gray')
+
+				# set size, color of input image
+				ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+				ax.set_xticks(())
+				ax.set_yticks(())
+				fig.add_subplot(ax)
 
 
-	            fig.add_subplot(ax)
+		## build inner image for biases or activations with just 1-d
+		elif len(param.size()) == 2:
+			# define layer plot parameters
+			s1, s2 = param.size()
+			# if s2 is large, swap values between s1 and s2, make s1 larger
+			if s1 < s2:
+				num_img = s1
+				s1 = s2
+				s2 = num_img
+			# num_img_row_col: define how many inner subplots inside an outer subplot
+			inner_grid = math.ceil(math.sqrt(s2))
+			num_inner_img = s2
+			inner_img_width = math.ceil(math.sqrt(s1))
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
 
-			# plot other param or layer
-	        else:
-				# plot an inner subplot image
-	            ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
+			# how many pixel cells are needed to fill with zeros
+			missing_pix = inner_img_width*inner_img_width - s1
+			# the filled new tensor for plot images
+			param_padded = torch.cat((param.view(s1, s2), torch.zeros((missing_pix, s2))),0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
 
-				# If there are more inner subplots, where to put subplot titles
-	            if s2 > 1:
-	                if index == int(num_img_row_col/2):
-	                    ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
-				# where to subplot title when there is just 1 inner subplot
-	            else:
-	                ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
-	            ax.set_xticks(())
-	            ax.set_yticks(())
-	            fig.add_subplot(ax)
+				ax.imshow(param_padded.numpy()[:, sub_sub].reshape(inner_img_width, inner_img_width), cmap='gray')
 
-	    param_index += 1
+				if sub_sub == inner_grid-2:
+					ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+				ax.set_xticks(())
+				ax.set_yticks(())
+				fig.add_subplot(ax)
 
-	fig.savefig('{}/epoch_{}.png'.format(args.plots_path, param[0][-1]))
+		## build inner image for biases or activations with just 1-d
+		elif len(param.size()) >= 3:
+			param = torch.squeeze(param)
+
+			if len(param.size()) == 3:
+
+				s2, inner_img_width, _ = param.size()
+				inner_grid = math.ceil(math.sqrt(s2))
+				num_inner_img = s2
+				inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+
+				for sub_sub in range(num_inner_img):
+					ax = plt.Subplot(fig, inner_frame[sub_sub])
+
+					ax.imshow(param.numpy()[sub_sub], cmap='gray')
+
+					if sub_sub == inner_grid-2:
+						ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+					ax.set_xticks(())
+					ax.set_yticks(())
+					fig.add_subplot(ax)
+
+			else:
+				s2, s3, inner_img_width, _ = param.size()
+				inner_grid = math.ceil(math.sqrt(s2))
+				deep_grid = math.ceil(math.sqrt(s3))
+				num_inner_img = s2
+				num_deep_img = s3
+				inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+
+				for sub_sub in range(num_inner_img):
+
+					deep_frame = gridspec.GridSpecFromSubplotSpec(deep_grid, deep_grid, subplot_spec=inner_frame[sub_sub], wspace=0.0, hspace=0.0)
+
+					for deep in range(num_deep_img):
+
+						ax = plt.Subplot(fig, deep_frame[deep])
+						ax.imshow(param[sub_sub, deep, :, :].numpy(), cmap='gray')
+
+						if sub_sub == inner_grid-2 and deep == inner_grid-2:
+							ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+						ax.set_xticks(())
+						ax.set_yticks(())
+						fig.add_subplot(ax)
+#############################
+		param_index += 1
+
+	fig.savefig('{}/epoch_{}.png'.format(args.plots_path, epoch))
 	# to clear fig for next plotting
 	plt.clf()
 
@@ -375,92 +433,35 @@ def display(args, param_names, param_values, cnn):
 	####################
 	# create figure
 	fig = plt.figure(1, figsize=(6, 6))
+
+
+	#### write suptitle
 	# access the current epoch for plotting
 	epoch = param_values[-1][0][-1]
-
 	## create figure super title
 	# relu and maxpool have no weights, can be ignored to print
 	fig.suptitle("epoch:"+str(epoch)+" " + cnn.__repr__().replace("CNN (", "").replace("\n)", "").replace("\n", "").replace("(conv2)", "\n(conv2)").replace("(out)", "\n(out)"), fontsize=8)
 
-	# fig's outer structure's num_row_img, num_col_img
-	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
-	# build outer structure
-	outer = gridspec.GridSpec(num_wh_row_col, num_wh_row_col)
+	#### outer_frame
+	# get outer grid, outer_grid_rows = outer_grid_cols = outer_grid
+	outer_grid = math.ceil(math.sqrt(len(param_names)))
+	# build outer_frame to hold outer images
+	outer_frame = gridspec.GridSpec(outer_grid, outer_grid)
 
-	# count each layer index
+	#### loop through each outer images
 	param_index = 0
-	# access each layer (weights, or biases, or activations, or loss)
+	# each outer_image is a param_values: input_image, w, b, activations, loss
 	for param in param_values:
 
-		# for loss plot
+		## build inner image for loss
 		if param_names[param_index] == 'loss':
-			# define loss plot parameters
-			# inner subplot has a single plot
-			# num_img_row_col: define how many inner subplots inside an outer subplot
-			num_img_row_col = 1
-			s2 = 1
-
-		elif param_names[param_index] == 'image':
-			s2 = 1
-			num_img_row_col = 1
-
-
-		elif len(param.size()) >= 3:
-			param = torch.squeeze(param)
-			if len(param.size()) == 3:
-				s2, img_wh, _ = param.size()
-				num_img_row_col = math.ceil(math.sqrt(s2))
-
-			else:
-				pass
-
-		# for all other layer plot, if dim == 2
-		elif len(param.size())==2:
-			# define layer plot parameters
-			s1, s2 = param.size()
-			# if s2 is large, swap values between s1 and s2, make s1 larger
-			if s1 < s2:
-				num_img = s1
-				s1 = s2
-				s2 = num_img
-			# num_img_row_col: define how many inner subplots inside an outer subplot
-			num_img_row_col = math.ceil(math.sqrt(s2))
-
-		# for all other layer plot, if dim == 1
-		elif len(param.size()) == 1:
-			# define layer plot parameters
-			# set subplot num_row_img == 1
-			# num_img_row_col: define how many inner subplots inside an outer subplot
-			num_img_row_col = 1
-			s1 = len(param)
-			s2 = 1
-
-		else:
-			pass
-
-		# all param other than loss must have img_wh, param_padded
-		# in order to plot images from arrays
-		if param_names[param_index] != 'loss' and param_names[param_index] != 'image':
-			if len(param.size())<=2:
-				# inside a outer subplot, get an inner subplot's width and height
-				img_wh = math.ceil(math.sqrt(s1))
-				# how many pixel cells are needed to fill with zeros
-				missing_pix = img_wh*img_wh - s1
-				# the filled new tensor for plot images
-				param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
-
-		# create inner structure: for each outer subplot, create inner structure for a square of inner subplots
-		inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
-
-		# loop every inner subplots
-		for index in range(s2):
-			# get ax for inner subplot ready
-			ax = plt.Subplot(fig, inner[index])
-
-			# plot loss
-			if param_names[param_index] == 'loss':
-				# param[0]: list of t or steps
-				# param[1]: list of loss
+			# inner_grid for loss
+			inner_grid_loss = 1
+			num_inner_img = 1
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid_loss, inner_grid_loss, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
 				ax.plot(param[0], param[1], 'b-')
 				# set x-axis and y-axis range
 				ax.set_xlim((0,max(param[0])))
@@ -469,34 +470,124 @@ def display(args, param_names, param_values, cnn):
 				ax.set_title("loss: %.4f" % param[1][-1], fontdict={'size': 8, 'color':  'black'})
 				fig.add_subplot(ax)
 
-			elif param_names[param_index] == 'image':
-				ax.imshow(param, cmap='gray')
-				ax.set_title(param_names[param_index]+": {}".format(param.shape), fontdict={'size': 8, 'color':  'black'})
+		## build inner image for input_image
+		elif param_names[param_index] == 'image':
+			# inner_grid for loss
+			inner_grid_inputImage = 1
+			num_inner_img = 1
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid_inputImage, inner_grid_inputImage, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
+				ax.imshow(param[0], cmap='gray')
 
-			# plot other param or layer
-			else:
+				# set size, color of input image
+				ax.set_title(param_names[param_index]+": {}".format(param[0].shape), fontdict={'size': 8, 'color':  'black'})
+				ax.set_xticks(())
+				ax.set_yticks(())
+				fig.add_subplot(ax)
 
-				if len(param.size()) == 3:
-					ax.imshow(param.numpy()[index], cmap='gray')
+		## build inner image for biases or activations with just 1-d
+		elif len(param.size()) == 1:
 
-				elif len(param.size()) > 3:
-					pass
+			inner_grid = 1
+			num_inner_img = 1
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
 
-				else:
-					# else (dim <= 2)
-					# plot an inner subplot image
-					ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
+			inner_img_width = math.ceil(math.sqrt(len(param)))
+			# how many pixel cells are needed to fill with zeros
+			missing_pix = inner_img_width*inner_img_width - len(param)
+			# the filled new tensor for plot images
+			param_padded = torch.cat((param.view(len(param),1), torch.zeros((missing_pix, 1))),0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
 
-				# If there are more inner subplots, where to put subplot titles
-				if s2 > 1:
-					if index == int(num_img_row_col/2):
-						ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
-				# where to subplot title when there is just 1 inner subplot
-				else:
+				ax.imshow(param_padded.view(inner_img_width, inner_img_width).numpy(), cmap='gray')
+
+				# set size, color of input image
+				ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+				ax.set_xticks(())
+				ax.set_yticks(())
+				fig.add_subplot(ax)
+
+
+		## build inner image for biases or activations with just 1-d
+		elif len(param.size()) == 2:
+			# define layer plot parameters
+			s1, s2 = param.size()
+			# if s2 is large, swap values between s1 and s2, make s1 larger
+			if s1 < s2:
+				num_img = s1
+				s1 = s2
+				s2 = num_img
+			# num_img_row_col: define how many inner subplots inside an outer subplot
+			inner_grid = math.ceil(math.sqrt(s2))
+			num_inner_img = s2
+			inner_img_width = math.ceil(math.sqrt(s1))
+			inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+
+			# how many pixel cells are needed to fill with zeros
+			missing_pix = inner_img_width*inner_img_width - s1
+			# the filled new tensor for plot images
+			param_padded = torch.cat((param.view(s1, s2), torch.zeros((missing_pix, s2))),0)
+			## plot loss
+			for sub_sub in range(num_inner_img):
+				ax = plt.Subplot(fig, inner_frame[sub_sub])
+
+				ax.imshow(param_padded.numpy()[:, sub_sub].reshape(inner_img_width, inner_img_width), cmap='gray')
+
+				if sub_sub == inner_grid-2:
 					ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
 				ax.set_xticks(())
 				ax.set_yticks(())
 				fig.add_subplot(ax)
+
+		## build inner image for biases or activations with just 1-d
+		elif len(param.size()) >= 3:
+			param = torch.squeeze(param)
+
+			if len(param.size()) == 3:
+
+				s2, inner_img_width, _ = param.size()
+				inner_grid = math.ceil(math.sqrt(s2))
+				num_inner_img = s2
+				inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+
+				for sub_sub in range(num_inner_img):
+					ax = plt.Subplot(fig, inner_frame[sub_sub])
+
+					ax.imshow(param.numpy()[sub_sub], cmap='gray')
+
+					if sub_sub == inner_grid-2:
+						ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+					ax.set_xticks(())
+					ax.set_yticks(())
+					fig.add_subplot(ax)
+
+			else:
+				s2, s3, inner_img_width, _ = param.size()
+				inner_grid = math.ceil(math.sqrt(s2))
+				deep_grid = math.ceil(math.sqrt(s3))
+				num_inner_img = s2
+				num_deep_img = s3
+				inner_frame = gridspec.GridSpecFromSubplotSpec(inner_grid, inner_grid, subplot_spec=outer_frame[param_index], wspace=0.0, hspace=0.0)
+
+				for sub_sub in range(num_inner_img):
+
+					deep_frame = gridspec.GridSpecFromSubplotSpec(deep_grid, deep_grid, subplot_spec=inner_frame[sub_sub], wspace=0.0, hspace=0.0)
+
+					for deep in range(num_deep_img):
+
+						ax = plt.Subplot(fig, deep_frame[deep])
+						ax.imshow(param[sub_sub, deep, :, :].numpy(), cmap='gray')
+
+						if sub_sub == inner_grid-2 and deep == inner_grid-2:
+							ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+						ax.set_xticks(())
+						ax.set_yticks(())
+						fig.add_subplot(ax)
+#############################
 
 		param_index += 1
 
@@ -542,14 +633,17 @@ def train(args):
 			# don't train the full epoch or total_num_batches, but only specific num_batches in each epoch
 			if args.num_batches == batch_idx:
 				break
-# start here
-		# plots and save every 5 steps or epochs
-		# Note: push a tab when save every 5 batches rather than epoch
-		if epoch_idx % 5 == 0:
+
+		# plot every n epochs
+		if epoch_idx % 1 == 0:
+
+			# keep test and plot based on a single and same image
+			conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits = cnn(torch.unsqueeze(test_images[0], dim=0))
+			# Note: input_image has to be 4d tensor (n, 1, 28, 28)
 
 			# every time when plotting, update losses and steps
 			losses.append(loss.data.numpy().tolist()[0])
-			steps.append(epoch_idx)
+			steps.append(epoch_idx+1)
 
 			# every time when plotting, update values of x, y, weights, biases, activations, loss
 			param_names = []
@@ -572,11 +666,11 @@ def train(args):
 
 			## insert a single image and its label
 			param_names.insert(0, "image")
-			batch_img1 = batch_img[0].numpy() # (1, 28, 28)
-			np_img1 = np.squeeze(batch_img1) # (28, 28)
-			batch_lab1 = batch_lab[0]
+			test_img1 = test_images.data.numpy()[0] # (1, 28, 28)
+			np_img1 = np.squeeze(test_img1) # (28, 28)
+			test_lab1 = test_labels[0]
 			# insert a single image and label for plotting loop
-			param_values.insert(0, (np_img1, batch_lab1))
+			param_values.insert(0, (np_img1, test_lab1))
 
 
 			## append logits for a single images
@@ -593,6 +687,9 @@ def train(args):
 			# check size of all layers except image and loss
 			# pp [p.size() for p in param_values[1:-1]]
 
+			# shorten param_names
+			shorten_names = [p_name.replace("weight", "w").replace("bias", "b") for p_name in param_names]
+			param_names = shorten_names
 
 			if args.display:
 				display(args, param_names, param_values, cnn)
@@ -604,7 +701,7 @@ def train(args):
 		plt.ioff()
 	else:
 		# save net and log
-		torch.save((net, net2pp), args.net_path)
+		torch.save(cnn, args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
 		# img2gif(args)
@@ -612,80 +709,115 @@ def train(args):
 def train_again(args):
 	""" Trains a model.
 	"""
+
 	# prepare dataset
-	x, y, loader = prepareData(args)
+	train_loader, test_images, test_labels = prepareData(args)
 
 	# load net and log
-	net, net2pp = torch.load(args.net_path)
-	steps, losses = torch.load(args.log_path)
+	cnn = torch.load(args.net_path)
 
+	steps, losses = torch.load(args.log_path)
 	previous_steps = steps[-1]
 
 	# build workflow
-	optimizer = torch.optim.SGD(net.parameters(), lr=0.02)
+	optimizer = torch.optim.Adam(cnn.parameters(), lr=0.02, betas=(0.9, 0.99))
 	loss_func = torch.nn.CrossEntropyLoss()
 
-	# train
+		# train
+
 	if args.display:
 		plt.ion()
-	# set t to epoch_idx
+
+	# for every epoch of training
 	for epoch_idx in range(args.num_epochs):
 
 		# loss value has to be carried in and out
 		loss = None
-		# batch_idx of an epoch
-		for batch_idx, (batch_x, batch_y) in enumerate(loader):
 
-			b_x = Variable(batch_x)
-			b_y = Variable(batch_y)
+		# traing model for every batch
+		for batch_idx, (batch_img, batch_lab) in enumerate(train_loader):
 
-			layer1, prediction = net(b_x)
-			loss = loss_func(prediction, b_y)
+			b_img = Variable(batch_img)
+			b_lab = Variable(batch_lab)
+
+			conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits = cnn(b_img)
+			loss = loss_func(logits, b_lab)
 			optimizer.zero_grad()
 			loss.backward()
 			optimizer.step()
 
-		# plots and save every 5 steps
-		if epoch_idx % 5 == 0:
-			losses.append(loss.data.numpy().tolist()[0])
-			# add up onto previous_steps
-			steps.append(previous_steps+epoch_idx)
+			# don't train the full epoch or total_num_batches, but only specific num_batches in each epoch
+			if args.num_batches == batch_idx:
+				break
 
+		# plot every n epochs
+		if epoch_idx % 1 == 0:
+
+			# keep test and plot based on a single and same image
+			conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits = cnn(torch.unsqueeze(test_images[0], dim=0))
+			# Note: input_image has to be 4d tensor (n, 1, 28, 28)
+
+			# every time when plotting, update losses and steps
+			losses.append(loss.data.numpy().tolist()[0])
+			steps.append(previous_steps+epoch_idx+1)
+
+			# every time when plotting, update values of x, y, weights, biases, activations, loss
 			param_names = []
 			param_values = []
-			for k, v in net.state_dict().items():
+			for k, v in cnn.state_dict().items():
 			    param_names.append(k)
 			    param_values.append(v)
 
-			param_names.insert(2, "h-layer1")
-			param_names.append("pred_layer")
-			param_names.insert(0, "y")
-			param_names.insert(0, "x")
+			## insert conv2_maxpool and conv2_relu
+			param_names.insert(4, "2maxPool")
+			param_names.insert(4, "2relu")
+			param_values.insert(4, conv2_maxpool.data[0])
+			param_values.insert(4, conv2_relu.data[0])
 
-			param_values.insert(2, layer1.data)
-			param_values.append(prediction.data)
-			# set y label (classification) from LongTensor to FloatTensor
-			# for later operations (inputs must have same type to operate)
-			# we are going to plot entire x, y not a single sample
-			param_values.insert(0, y.data.type(torch.FloatTensor))
-			param_values.insert(0, x.data)
+			## insert conv1_maxpool and conv1_relu
+			param_names.insert(2, "1maxPool")
+			param_names.insert(2, "1relu")
+			param_values.insert(2, conv1_maxpool.data[0])
+			param_values.insert(2, conv1_relu.data[0])
 
+			## insert a single image and its label
+			param_names.insert(0, "image")
+			test_img1 = test_images.data.numpy()[0] # (1, 28, 28)
+			np_img1 = np.squeeze(test_img1) # (28, 28)
+			test_lab1 = test_labels[0]
+			# insert a single image and label for plotting loop
+			param_values.insert(0, (np_img1, test_lab1))
+
+
+			## append logits for a single images
+			logits1 = logits[0]
+			logits1_softmax = F.softmax(logits1).data
+			param_names.append("softmax")
+			param_values.append(logits1_softmax)
+
+			## append losses and steps
 			# losses.append(loss.data[0])
 			# steps.append(t)
 			param_names.append("loss")
 			param_values.append([steps, losses])
+			# check size of all layers except image and loss
+			# pp [p.size() for p in param_values[1:-1]]
+
+			# shorten param_names
+			shorten_names = [p_name.replace("weight", "w").replace("bias", "b") for p_name in param_names]
+			param_names = shorten_names
 
 			if args.display:
-				display(args, param_names, param_values, net2pp)
+				display(args, param_names, param_values, cnn)
 
 			else:
-				saveplots(args, param_names, param_values, net2pp)
+				saveplots(args, param_names, param_values, cnn)
 
 	if args.display:
 		plt.ioff()
 	else:
 		# save net and log
-		torch.save((net, net2pp), args.net_path)
+		torch.save(cnn, args.net_path)
 		torch.save((steps, losses), args.log_path)
 		# convert saved images to gif (speed up, down, normal versions)
 		# img2gif(args)
@@ -733,12 +865,19 @@ def build_parser():
 #########################################################
 	# the command line function defined as train_again
 	subparser = subparsers.add_parser('train_again', help='Trains a model.')
-	subparser.add_argument('-d', '--display', action='store_true', help='Plot whole process while training')
-	subparser.add_argument('-net', '--net_path', required=True, help="Path to load and update neuralnet model")
-	subparser.add_argument('-log', '--log_path', required=True, help="Path to load and update log information: losses, steps")
-	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
-	subparser.add_argument('-num', '--num_epochs', type=int, default=100,
-	                    help="Number of epochs to train this time")
+	# add args to train function
+	subparser.add_argument('-batch_size', type=int, default=50, help="Number of samples in each batch")
+	subparser.add_argument('-num_batches', type=int, default=100, help="Number of batches to train in each epoch")
+	subparser.add_argument('-num_test', type=int, default=1000, help="Number of samples to test during testing")
+	subparser.add_argument('-display', action='store_true', help='Plot whole process while training')
+	subparser.add_argument('-net', '--net_path', required=True, help="Path to save neuralnet model")
+	subparser.add_argument('-log', '--log_path', required=True, help="Path to save log information: losses, steps")
+	subparser.add_argument('-plot', '--plots_path', required=True, help="Path to save plots")
+	subparser.add_argument('-num_epochs', type=int, default=1, help="Number of epochs to train this time")
+	subparser.add_argument('-s', '--selection',
+		choices=['train', 'validate', 'test', 'evaluate', 'auto'],
+		default='auto', help='Try to produce data corresponding to a specific '
+			'variation of the model.')
 	subparser.set_defaults(func=train_again)
 
 
@@ -748,7 +887,8 @@ def img2gif(args):
 	os.chdir(args.plots_path)
 
 	# epoch_%d0.png: only takes epoch_0|10|20|30...|100|110
-	subprocess.call(['ffmpeg', '-i', 'epoch_%d5.png', 'output.avi'])
+	# epoch_%d.png: 1,2,3,4,5 plot every epoch
+	subprocess.call(['ffmpeg', '-i', 'epoch_%d.png', 'output.avi'])
 	subprocess.call(['ffmpeg', '-i', 'output.avi', '-filter:v', 'setpts=4.0*PTS', 'output_down.avi'])
 	subprocess.call(['ffmpeg', '-i', 'output.avi', '-r', '16', '-filter:v', 'setpts=0.25*PTS', 'output_up.avi'])
 	subprocess.call(['ffmpeg', '-i', 'output_down.avi', 'out_down.gif'])
