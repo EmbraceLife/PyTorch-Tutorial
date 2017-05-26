@@ -28,13 +28,17 @@ python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1
 python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display -plotting
 
 ## to save plots of training
-python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -plotting
+## continue to train for a full epoch 60000 samples and save 3 plots
+python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 500 -num_batches 40 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -plotting
 
 ## continue to train without display or save any plots
 python -m pdb tutorial-contents/401_my_cnn.py train_again -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401
 
 ## continue to train while just display every steps in training (no saving plots)
 python -m pdb tutorial-contents/401_my_cnn.py train_again -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display -plotting
+
+## continue to train for a full epoch 60000 samples and save 3 plots
+python -m pdb tutorial-contents/401_my_cnn.py train_again -batch_size 500 -num_batches 40 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -plotting
 
 ## convert images to gif with 3 speeds
 python tutorial-contents/401_my_cnn.py img2gif -p /Users/Natsume/Downloads/temp_folders/401
@@ -636,6 +640,7 @@ def train(args):
 			loss.backward()
 			optimizer.step()
 
+			print("loss for batch_{}: %.4f".format(batch_idx) % loss.data.numpy()[0])
 			# don't train the full epoch or total_num_batches, but only specific num_batches in each epoch
 			if args.num_batches == batch_idx:
 				break
@@ -704,6 +709,9 @@ def train(args):
 			else:
 				saveplots(args, param_names, param_values, cnn)
 
+			# epoch counting (start 1 not 0)
+			print("finish saving plot for epoch_%d" % epoch_idx+1)
+
 	if args.display:
 		plt.ioff()
 	else:
@@ -753,6 +761,9 @@ def train_again(args):
 			loss.backward()
 			optimizer.step()
 
+			# Two ways to format print strings
+			print("loss for batch_{}: %.4f".format(batch_idx) % loss.data.numpy()[0])
+			# print("loss for batch_%d: %.4f" % (batch_idx, loss.data.numpy()[0]))
 			# don't train the full epoch or total_num_batches, but only specific num_batches in each epoch
 			if args.num_batches == batch_idx:
 				break
