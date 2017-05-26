@@ -279,7 +279,7 @@ def saveplots(args, param_names, param_values, cnn):
 	epoch = param_values[-1][0][-1]
 	## create figure super title
 	# relu and maxpool have no weights, can be ignored to print
-	fig.suptitle("epoch:"+str(epoch)+" " + cnn.__repr__().replace("CNN (", "").replace("\n)", "").replace("\n", "").replace("(conv2)", "\n(conv2)").replace("(out)", "\n(out)"), fontsize=8)
+	fig.suptitle("epoch:%04d" % epoch + " " + cnn.__repr__().replace("CNN (", "").replace("\n)", "").replace("\n", "").replace("(conv2)", "\n(conv2)").replace("(out)", "\n(out)"), fontsize=8)
 
 	#### outer_frame
 	# get outer grid, outer_grid_rows = outer_grid_cols = outer_grid
@@ -450,7 +450,7 @@ def display(args, param_names, param_values, cnn):
 	epoch = param_values[-1][0][-1]
 	## create figure super title
 	# relu and maxpool have no weights, can be ignored to print
-	fig.suptitle("epoch:"+str(epoch)+" " + cnn.__repr__().replace("CNN (", "").replace("\n)", "").replace("\n", "").replace("(conv2)", "\n(conv2)").replace("(out)", "\n(out)"), fontsize=8)
+	fig.suptitle("epoch:%04d" % epoch + " " + cnn.__repr__().replace("CNN (", "").replace("\n)", "").replace("\n", "").replace("(conv2)", "\n(conv2)").replace("(out)", "\n(out)"), fontsize=8)
 
 	#### outer_frame
 	# get outer grid, outer_grid_rows = outer_grid_cols = outer_grid
@@ -522,7 +522,7 @@ def display(args, param_names, param_values, cnn):
 				fig.add_subplot(ax)
 
 
-		## build inner image for biases or activations with just 1-d
+		## build inner image for biases or activations with just 2-d
 		elif len(param.size()) == 2:
 			# define layer plot parameters
 			s1, s2 = param.size()
@@ -553,10 +553,11 @@ def display(args, param_names, param_values, cnn):
 				ax.set_yticks(())
 				fig.add_subplot(ax)
 
-		## build inner image for biases or activations with just 1-d
+		## build inner image for biases or activations with just 3-d or 4d
 		elif len(param.size()) >= 3:
 			param = torch.squeeze(param)
 
+			# size 3d
 			if len(param.size()) == 3:
 
 				s2, inner_img_width, _ = param.size()
@@ -575,6 +576,7 @@ def display(args, param_names, param_values, cnn):
 					ax.set_yticks(())
 					fig.add_subplot(ax)
 
+			# size: 4d
 			else:
 				s2, s3, inner_img_width, _ = param.size()
 				inner_grid = math.ceil(math.sqrt(s2))
