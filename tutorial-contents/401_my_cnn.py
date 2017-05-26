@@ -15,23 +15,23 @@ alias opt_grad optimizer.param_groups[0]['params'][%1].grad
 
 """
 ## View prepared dataset (test prepareData)
-python -m pdb tutorial-contents/302_my_classification.py prepareData
+python -m pdb tutorial-contents/401_my_cnn.py prepareData
 
 ## build a net (test)
-python -m pdb tutorial-contents/302_my_classification.py build_net
+python -m pdb tutorial-contents/401_my_cnn.py build_net
 
 
 ## just display every steps in training (no saving plots)
-python -m pdb tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302/net.pkl -log /Users/Natsume/Downloads/temp_folders/302/log.pkl -p /Users/Natsume/Downloads/temp_folders/302 -d
+python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 500 -num_batches 10 -num_epochs 1 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display
 
 ## to save plots of training
-python tutorial-contents/302_my_classification.py train -net /Users/Natsume/Downloads/temp_folders/302noshuffle/net.pkl -log /Users/Natsume/Downloads/temp_folders/302noshuffle/log.pkl -p /Users/Natsume/Downloads/temp_folders/302noshuffle -num 200
+python tutorial-contents/401_my_cnn.py train -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -p /Users/Natsume/Downloads/temp_folders/401 -num_epochs 200
 
 ## continue to train with full epoch and plots
-python tutorial-contents/302_my_classification.py train_again -net /Users/Natsume/Downloads/temp_folders/302noshuffle/net.pkl -log /Users/Natsume/Downloads/temp_folders/302noshuffle/log.pkl -p /Users/Natsume/Downloads/temp_folders/302noshuffle -num 200
+python tutorial-contents/401_my_cnn.py train_again -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -p /Users/Natsume/Downloads/temp_folders/401 -num 200
 
 ## convert images to gif with 3 speeds
-python tutorial-contents/302_my_classification.py img2gif -p /Users/Natsume/Downloads/temp_folders/302noshuffle
+python tutorial-contents/401_my_cnn.py img2gif -p /Users/Natsume/Downloads/temp_folders/401
 
 ## all I need to do is to change some key source codes and get a new folder to save plots and net, losses, steps
 
@@ -43,6 +43,8 @@ python tutorial-contents/302_my_classification.py img2gif -p /Users/Natsume/Down
 import argparse
 import sys
 import torch
+import torchvision
+import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.utils.data as Data
@@ -63,67 +65,133 @@ def prepareData(args):
 	# reproducible
 	torch.manual_seed(1)
 
-	# create tensor (100, 2) of 1s
-	n_data = torch.ones(100, 2)
+	data_path = './mnist/'
+	# args.batch_size = 50
+	# args.num_batches = 100  # num of batches to train, must < total_num_batches
+	download_or_not = False   # set to False if you have downloaded already
+	# args.num_test = 100 # number of samples to test from test_data
 
-	#### data for class 1
-	# torch.normal(mean|tensor, std)
-	x0 = torch.normal(2*n_data, 1)
-	y0 = torch.zeros(100)
+	# load MNIST dataset into tensors
+	train_data = torchvision.datasets.MNIST(
+		# where to save the data or load the data from
+	    root=data_path,
+		# get training dataset only (not test set)
+	    train=True,
+		# Converts a PIL.Image or numpy.ndarray (H x W x C) in the range
+		# [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0].
+	    transform=torchvision.transforms.ToTensor(),
+	    download=download_or_not,
+	)
+	# it is possible to hack torchvision.datasets.MNIST and torchvision.transforms.ToTensor()????
 
-	### data for class 2
-	x1 = torch.normal(-2*n_data, 1)
-	y1 = torch.ones(100)
 
-	### add two tensor on rows, and change type from int to float
-	x = torch.cat((x0, x1), 0).type(torch.FloatTensor)
-	y = torch.cat((y0, y1), ).type(torch.LongTensor)
+	# check the original dataset as tensor
+	# train_data.train_data.size() # size 60000, 28, 28
+	# train_data.train_labels.size() # size 60000
+	# train_data.train_data.max() # 255
+	# train_data.train_data.__class__ # ByteTensor
+	# train_data.train_labels.__class__ # LongTensor
+	# train_data.train_labels.max() # 9
+	# train_data[0] # return a single tuple of (train_data, train_labels)
+	total_num_batches = int(train_data.train_data.__len__()/args.batch_size)
 
-	# conver tensors to variables
-	x_v, y_v = Variable(x), Variable(y)
-
-	## plot dataset
-	# plt.scatter(x.data.numpy()[:, 0], x.data.numpy()[:, 1], c=y.data.numpy(), s=100, lw=0, cmap='RdYlGn')
+	## plot the first image with gray scale
+	# plt.imshow(train_data.train_data[0].numpy(), cmap='gray')
+	# plt.title('%i' % train_data.train_labels[0])
 	# plt.show()
 
-	# convert dataset into batches
-	torch_dataset = Data.TensorDataset(data_tensor=x, target_tensor=y)
+	## use dt train_loader to check its funcs and attributes
+	# for index, (img, labels) in enumerate(train_loader): img.size(); break;
+	# this way, we see a batch size: (50, 1, 28, 28)
+	# train_data must be TensorDataset first already, although its class is torchvision.datasets.mnist.MNIST
+	train_loader = Data.DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True)
+	# once TensorDataset turned into DataLoader, we can only access it by enumerate()
 
-	# put whole dataset into batches
-	loader = Data.DataLoader(
-	    dataset=torch_dataset,      # torch TensorDataset format
-		# make smaller batch_size and make shuffle batches, can make loss curve very very wiggy
-	    batch_size=100,
-	    shuffle=False,               # random shuffle for training
-	    num_workers=2,              # subprocesses for loading data
-	    drop_last=False				# True: drop smaller remaining data; False: keep smaller remaining data
-	)
+	## extract test dataset
+	# without apply transform, dr test_data shows test_data is same type (ByteTensor) and value range 0-255
+	test_data = torchvision.datasets.MNIST(root=data_path, train=False)
 
-	return (x_v, y_v, loader)
+	## testing data in whole not in batch, we can shrink size to speed up
+	# unsqueeze, dim=1: convert (2000, 28, 28) to (2000, 1, 28, 28)
+	# shrink to use only first 2000 samples
+	# normalize: range 0-1
+	# volatile = True: to not calculate gradients
+	test_images = Variable(torch.unsqueeze(test_data.test_data, dim=1), volatile=True).type(torch.FloatTensor)[:args.num_test]/255.
+	test_labels = test_data.test_labels[:args.num_test]
+
+	return (train_loader, test_images, test_labels)
 
 
 ######################################################
 # create Net: network class
 ######################################################
 
-# move Net in global env due to AttributeError: Can't pickle local object 'build_net.<locals>.Net'
-class Net(torch.nn.Module):
+# build network in flexible way
+class CNN(nn.Module):
 	""" 1. create __init__; 2. create forward()
 	"""
-	def __init__(self, n_feature, n_hidden, n_output):
-	    super(Net, self).__init__()
-	# 3 lines above are just template must have!!!
+	def __init__(self):
+		super(CNN, self).__init__()
 
-		# build 2 hidden layers
-	    self.hidden = torch.nn.Linear(n_feature, n_hidden)
-	    self.out = torch.nn.Linear(n_hidden, n_output)
+		# what exactly is nn.Conv2d???
+		self.conv1 = nn.Conv2d(
+				in_channels=1,              # input height
+				out_channels=16,            # n_filters
+				kernel_size=5,              # filter size
+				stride=1,                   # filter movement/step
+				padding=2,                  # if want same width and length of this image after con2d, padding=(kernel_size-1)/2 if stride=1
+			)
+		self.conv2 = nn.Conv2d(16, 32, 5, 1, 2)
+		self.out = nn.Linear(32*7*7, 10)
 
 	# feed dataset to hidden layers and apply activation functions
 	def forward(self, x):
-		layer1 = F.relu(self.hidden(x))
-		prediction = self.out(layer1)
+		conv1_relu = F.relu(self.conv1(x))
+		conv1_maxpool = F.max_pool2d(conv1_relu, kernel_size=2)
 
-		return layer1, prediction
+		conv2_relu = F.relu(self.conv2(conv1_maxpool))
+		conv2_maxpool = F.max_pool2d(conv2_relu, kernel_size=2)
+
+		# flatten the output of conv2 to (batch_size, 32 * 7 * 7)
+		conv2_flat = conv2_maxpool.view(conv2_maxpool.size(0), -1)
+		logits = self.out(conv2_flat)
+
+		return (conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits)
+
+
+
+
+class CNN2PP(nn.Module):
+	def __init__(self):
+	    super(CNN2PP, self).__init__()
+
+	    self.conv1 = nn.Sequential(         # input shape (1, 28, 28)
+			# Note: how to calc cnn output shape
+	        nn.Conv2d(
+	            in_channels=1,              # input height
+	            out_channels=16,            # n_filters
+	            kernel_size=5,              # filter size
+	            stride=1,                   # filter movement/step
+	            padding=2,                  # if want same width and length of this image after con2d, padding=(kernel_size-1)/2 if stride=1
+	        ),                              # output shape (16, 28, 28)
+	        nn.ReLU(),                      # activation
+	        nn.MaxPool2d(kernel_size=2),    # choose max value in 2x2 area, output shape (16, 14, 14)
+	    )
+	    self.conv2 = nn.Sequential(         # input shape (1, 28, 28)
+	        nn.Conv2d(16, 32, 5, 1, 2),     # output shape (32, 14, 14)
+	        nn.ReLU(),                      # activation
+	        nn.MaxPool2d(2),                # output shape (32, 7, 7)
+	    )
+	    self.out = nn.Linear(32 * 7 * 7, 10)   # fully connected layer, output 10 classes
+
+	def forward(self, x):
+	    x = self.conv1(x)
+	    x = self.conv2(x)
+		# flatten the output of conv2 to (batch_size, 32 * 7 * 7)
+	    x = x.view(x.size(0), -1)
+		# fully connected layer only take input with 2-d
+	    output = self.out(x)
+	    return output
 
 
 ######################################################
@@ -136,21 +204,26 @@ def build_net(args):
 	######################
 	# hyper parameters:
 	learning_rate = 0.02
-	optimizer_select = "sgd" # or 'momentum', 'adam', 'rmsprop'
+	optimizer_select = "adam" # or 'momentum', 'adam', 'rmsprop'
 	loss_select = "crossentropy" # or 'mse'
 
+	######################
+	## build instantiate CNN model and CNN2PP to print
 	# input_X has 2 cols;
 	# hidden1 has 10 cols? 10 rows?
 	# hidden2 has 2 cols? 2 rows?
 	# see from many examples
-	net = Net(n_feature=2, n_hidden=10, n_output=2)
+	cnn = CNN()
+	print(cnn)  # net architecture
+	cnn2pp = CNN2PP()
+	print(cnn2pp)
 
 	######################
 	## select an optimizer
-	opt_SGD         = torch.optim.SGD(net.parameters(), lr=learning_rate)
-	opt_Momentum    = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.8)
-	opt_RMSprop     = torch.optim.RMSprop(net.parameters(), lr=learning_rate, alpha=0.9)
-	opt_Adam        = torch.optim.Adam(net.parameters(), lr=learning_rate, betas=(0.9, 0.99))
+	opt_SGD         = torch.optim.SGD(cnn.parameters(), lr=learning_rate)
+	opt_Momentum    = torch.optim.SGD(cnn.parameters(), lr=learning_rate, momentum=0.8)
+	opt_RMSprop     = torch.optim.RMSprop(cnn.parameters(), lr=learning_rate, alpha=0.9)
+	opt_Adam        = torch.optim.Adam(cnn.parameters(), lr=learning_rate, betas=(0.9, 0.99))
 	optimizers = {'sgd':opt_SGD, 'momentum':opt_Momentum, 'rmsprop':opt_RMSprop, 'adam':opt_Adam}
 
 	# use args.optimizer to select an optimizer to use
@@ -174,15 +247,7 @@ def build_net(args):
 		if loss_select == k:
 			loss_func = v
 
-
-	# build net2pp for printing (the same object as net)
-	net2pp = torch.nn.Sequential(
-	    torch.nn.Linear(2, 10),
-	    torch.nn.ReLU(),
-	    torch.nn.Linear(10, 2)
-	)
-
-	return (net, optimizer, loss_func, net2pp)
+	return (cnn, optimizer, loss_func, cnn2pp)
 
 ######################################################
 # create plots and save them during training
@@ -301,7 +366,7 @@ def saveplots(args, param_names, param_values, net2pp):
 	plt.clf()
 
 # just plotting without saving images
-def display(args, param_names, param_values, net2pp):
+def display(args, param_names, param_values, cnn):
 	""" 1. x, y, plot weights, biases, activations, losses; 2. just display the plotting without saving them
 	"""
 
@@ -314,9 +379,8 @@ def display(args, param_names, param_values, net2pp):
 	epoch = param_values[-1][0][-1]
 
 	## create figure super title
-	# make title net.__repr__() # fontsize="x-large", "large", "medium", "small", or 12
-	# remove 'Net (' or 'Sequential (' and '\n)' to print title nicely
-	fig.suptitle("epoch:"+str(epoch)+" " + net2pp.__repr__().replace("Sequential (", "").replace("\n)", "").replace("\n", ""), fontsize=8)
+	# relu and maxpool have no weights, can be ignored to print
+	fig.suptitle("epoch:"+str(epoch)+" " + cnn.__repr__().replace("CNN (", "").replace("\n)", "").replace("\n", "").replace("(conv2)", "\n(conv2)").replace("(out)", "\n(out)"), fontsize=8)
 
 	# fig's outer structure's num_row_img, num_col_img
 	num_wh_row_col = math.ceil(math.sqrt(len(param_names)))
@@ -329,86 +393,112 @@ def display(args, param_names, param_values, net2pp):
 	for param in param_values:
 
 		# for loss plot
-	    if param_names[param_index] == 'loss':
+		if param_names[param_index] == 'loss':
 			# define loss plot parameters
 			# inner subplot has a single plot
 			# num_img_row_col: define how many inner subplots inside an outer subplot
-	        num_img_row_col = 1
-	        s2 = 1
+			num_img_row_col = 1
+			s2 = 1
+
+		elif param_names[param_index] == 'image':
+			s2 = 1
+			num_img_row_col = 1
+
+
+		elif len(param.size()) >= 3:
+			param = torch.squeeze(param)
+			if len(param.size()) == 3:
+				s2, img_wh, _ = param.size()
+				num_img_row_col = math.ceil(math.sqrt(s2))
+
+			else:
+				pass
 
 		# for all other layer plot, if dim == 2
-	    elif len(param.size())==2:
+		elif len(param.size())==2:
 			# define layer plot parameters
-	        s1, s2 = param.size()
+			s1, s2 = param.size()
 			# if s2 is large, swap values between s1 and s2, make s1 larger
-	        if s1 < s2:
-	            num_img = s1
-	            s1 = s2
-	            s2 = num_img
+			if s1 < s2:
+				num_img = s1
+				s1 = s2
+				s2 = num_img
 			# num_img_row_col: define how many inner subplots inside an outer subplot
-	        num_img_row_col = math.ceil(math.sqrt(s2))
+			num_img_row_col = math.ceil(math.sqrt(s2))
 
 		# for all other layer plot, if dim == 1
-	    elif len(param.size()) == 1:
+		elif len(param.size()) == 1:
 			# define layer plot parameters
 			# set subplot num_row_img == 1
 			# num_img_row_col: define how many inner subplots inside an outer subplot
-	        num_img_row_col = 1
-	        s1 = len(param)
-	        s2 = 1
+			num_img_row_col = 1
+			s1 = len(param)
+			s2 = 1
 
-	    else:
-	        pass
+		else:
+			pass
 
 		# all param other than loss must have img_wh, param_padded
 		# in order to plot images from arrays
-	    if param_names[param_index] != 'loss':
-			# inside a outer subplot, get an inner subplot's width and height
-	        img_wh = math.ceil(math.sqrt(s1))
-			# how many pixel cells are needed to fill with zeros
-	        missing_pix = img_wh*img_wh - s1
-			# the filled new tensor for plot images
-	        param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
+		if param_names[param_index] != 'loss' and param_names[param_index] != 'image':
+			if len(param.size())<=2:
+				# inside a outer subplot, get an inner subplot's width and height
+				img_wh = math.ceil(math.sqrt(s1))
+				# how many pixel cells are needed to fill with zeros
+				missing_pix = img_wh*img_wh - s1
+				# the filled new tensor for plot images
+				param_padded = torch.cat((param.view(s1,s2), torch.zeros((missing_pix, s2))),0)
 
 		# create inner structure: for each outer subplot, create inner structure for a square of inner subplots
-	    inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
+		inner = gridspec.GridSpecFromSubplotSpec(num_img_row_col, num_img_row_col, subplot_spec=outer[param_index], wspace=0.0, hspace=0.0)
 
 		# loop every inner subplots
-	    for index in range(s2):
+		for index in range(s2):
 			# get ax for inner subplot ready
-	        ax = plt.Subplot(fig, inner[index])
+			ax = plt.Subplot(fig, inner[index])
 
 			# plot loss
-	        if param_names[param_index] == 'loss':
+			if param_names[param_index] == 'loss':
 				# param[0]: list of t or steps
 				# param[1]: list of loss
-	            ax.plot(param[0], param[1], 'b-')
+				ax.plot(param[0], param[1], 'b-')
 				# set x-axis and y-axis range
-	            ax.set_xlim((0,max(param[0])))
-	            ax.set_ylim((0,max(param[1])))
+				ax.set_xlim((0,max(param[0])))
+				ax.set_ylim((0,max(param[1])))
 				# set size, color of loss
-	            ax.set_title("loss: %.4f" % param[1][-1], fontdict={'size': 8, 'color':  'black'})
+				ax.set_title("loss: %.4f" % param[1][-1], fontdict={'size': 8, 'color':  'black'})
+				fig.add_subplot(ax)
 
-
-	            fig.add_subplot(ax)
+			elif param_names[param_index] == 'image':
+				ax.imshow(param, cmap='gray')
+				ax.set_title(param_names[param_index]+": {}".format(param.shape), fontdict={'size': 8, 'color':  'black'})
 
 			# plot other param or layer
-	        else:
-				# plot an inner subplot image
-	            ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
+			else:
+
+				if len(param.size()) == 3:
+					ax.imshow(param.numpy()[index], cmap='gray')
+
+				elif len(param.size()) > 3:
+					pass
+
+				else:
+					# else (dim <= 2)
+					# plot an inner subplot image
+					ax.imshow(np.reshape(param_padded.numpy()[:, index], (img_wh, img_wh)), cmap='gray')
 
 				# If there are more inner subplots, where to put subplot titles
-	            if s2 > 1:
-	                if index == int(num_img_row_col/2):
-	                    ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+				if s2 > 1:
+					if index == int(num_img_row_col/2):
+						ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
 				# where to subplot title when there is just 1 inner subplot
-	            else:
-	                ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
-	            ax.set_xticks(())
-	            ax.set_yticks(())
-	            fig.add_subplot(ax)
+				else:
+					ax.set_title(param_names[param_index]+": {}".format(param.numpy().shape), fontdict={'size': 8, 'color':  'black'})
+				ax.set_xticks(())
+				ax.set_yticks(())
+				fig.add_subplot(ax)
 
-	    param_index += 1
+		param_index += 1
 
 	# control how long to view a fig for each time
 	plt.pause(0.5)
@@ -419,10 +509,10 @@ def train(args):
 	""" Trains a model.
 	"""
 	# prepare dataset
-	x, y, loader = prepareData(args)
+	train_loader, test_images, test_labels = prepareData(args)
 
 	# build net
-	net, optimizer, loss_func, net2pp = build_net(args)
+	cnn, optimizer, loss_func, cnn2pp = build_net(args)
 
 	# train
 	losses = []
@@ -438,17 +528,21 @@ def train(args):
 		loss = None
 
 		# traing model for every batch
-		for batch_idx, (batch_x, batch_y) in enumerate(loader):
+		for batch_idx, (batch_img, batch_lab) in enumerate(train_loader):
 
-			b_x = Variable(batch_x)
-			b_y = Variable(batch_y)
+			b_img = Variable(batch_img)
+			b_lab = Variable(batch_lab)
 
-			layer1, prediction = net(b_x)
-			loss = loss_func(prediction, b_y)
+			conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits = cnn(b_img)
+			loss = loss_func(logits, b_lab)
 			optimizer.zero_grad()
 			loss.backward()
 			optimizer.step()
 
+			# don't train the full epoch or total_num_batches, but only specific num_batches in each epoch
+			if args.num_batches == batch_idx:
+				break
+# start here
 		# plots and save every 5 steps or epochs
 		# Note: push a tab when save every 5 batches rather than epoch
 		if epoch_idx % 5 == 0:
@@ -460,33 +554,51 @@ def train(args):
 			# every time when plotting, update values of x, y, weights, biases, activations, loss
 			param_names = []
 			param_values = []
-			for k, v in net.state_dict().items():
+			for k, v in cnn.state_dict().items():
 			    param_names.append(k)
 			    param_values.append(v)
 
-			param_names.insert(2, "h-layer1")
-			param_names.append("pred_layer")
-			param_names.insert(0, "y")
-			param_names.insert(0, "x")
+			## insert conv2_maxpool and conv2_relu
+			param_names.insert(4, "2maxPool")
+			param_names.insert(4, "2relu")
+			param_values.insert(4, conv2_maxpool.data[0])
+			param_values.insert(4, conv2_relu.data[0])
 
-			param_values.insert(2, layer1.data)
-			param_values.append(prediction.data)
-			# set y label (classification) from LongTensor to FloatTensor
-			# for later operations (inputs must have same type to operate)
-			# we are going to plot entire x, y not a single sample
-			param_values.insert(0, y.data.type(torch.FloatTensor))
-			param_values.insert(0, x.data)
+			## insert conv1_maxpool and conv1_relu
+			param_names.insert(2, "1maxPool")
+			param_names.insert(2, "1relu")
+			param_values.insert(2, conv1_maxpool.data[0])
+			param_values.insert(2, conv1_relu.data[0])
 
+			## insert a single image and its label
+			param_names.insert(0, "image")
+			batch_img1 = batch_img[0].numpy() # (1, 28, 28)
+			np_img1 = np.squeeze(batch_img1) # (28, 28)
+			batch_lab1 = batch_lab[0]
+			# insert a single image and label for plotting loop
+			param_values.insert(0, (np_img1, batch_lab1))
+
+
+			## append logits for a single images
+			logits1 = logits[0]
+			logits1_softmax = F.softmax(logits1).data
+			param_names.append("softmax")
+			param_values.append(logits1_softmax)
+
+			## append losses and steps
 			# losses.append(loss.data[0])
 			# steps.append(t)
 			param_names.append("loss")
 			param_values.append([steps, losses])
+			# check size of all layers except image and loss
+			# pp [p.size() for p in param_values[1:-1]]
+
 
 			if args.display:
-				display(args, param_names, param_values, net2pp)
+				display(args, param_names, param_values, cnn)
 
 			else:
-				saveplots(args, param_names, param_values, net2pp)
+				saveplots(args, param_names, param_values, cnn)
 
 	if args.display:
 		plt.ioff()
@@ -603,11 +715,14 @@ def build_parser():
 	#########################################################
 	subparser = subparsers.add_parser('train', help='Trains a model for the first time.')
 	# add args to train function
-	subparser.add_argument('-d', '--display', action='store_true', help='Plot whole process while training')
+	subparser.add_argument('-batch_size', type=int, default=50, help="Number of samples in each batch")
+	subparser.add_argument('-num_batches', type=int, default=100, help="Number of batches to train in each epoch")
+	subparser.add_argument('-num_test', type=int, default=1000, help="Number of samples to test during testing")
+	subparser.add_argument('-display', action='store_true', help='Plot whole process while training')
 	subparser.add_argument('-net', '--net_path', required=True, help="Path to save neuralnet model")
 	subparser.add_argument('-log', '--log_path', required=True, help="Path to save log information: losses, steps")
-	subparser.add_argument('-p', '--plots_path', required=True, help="Path to save plots")
-	subparser.add_argument('-num', '--num_epochs', type=int, default=100, help="Number of epochs to train this time")
+	subparser.add_argument('-plot', '--plots_path', required=True, help="Path to save plots")
+	subparser.add_argument('-num_epochs', type=int, default=1, help="Number of epochs to train this time")
 	subparser.add_argument('-s', '--selection',
 		choices=['train', 'validate', 'test', 'evaluate', 'auto'],
 		default='auto', help='Try to produce data corresponding to a specific '
