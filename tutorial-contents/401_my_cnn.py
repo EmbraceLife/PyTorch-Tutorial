@@ -20,15 +20,21 @@ python -m pdb tutorial-contents/401_my_cnn.py prepareData
 ## build a net (test)
 python -m pdb tutorial-contents/401_my_cnn.py build_net
 
-
-## just display every steps in training (no saving plots)
-python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display
-
-## to save plots of training
+## just train without plot anything or save any plotting
 python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401
 
-## continue to train with full epoch and plots
+
+## just display every steps in training (no saving plots)
+python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display -plotting
+
+## to save plots of training
+python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -plotting
+
+## continue to train without display or save any plots
 python -m pdb tutorial-contents/401_my_cnn.py train_again -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401
+
+## continue to train while just display every steps in training (no saving plots)
+python -m pdb tutorial-contents/401_my_cnn.py train_again -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401 -display -plotting
 
 ## convert images to gif with 3 speeds
 python tutorial-contents/401_my_cnn.py img2gif -p /Users/Natsume/Downloads/temp_folders/401
@@ -634,8 +640,9 @@ def train(args):
 			if args.num_batches == batch_idx:
 				break
 
+
 		# plot every n epochs
-		if epoch_idx % 1 == 0:
+		if args.plotting == True and epoch_idx % 1 == 0:
 
 			# keep test and plot based on a single and same image
 			conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits = cnn(torch.unsqueeze(test_images[0], dim=0))
@@ -751,7 +758,7 @@ def train_again(args):
 				break
 
 		# plot every n epochs
-		if epoch_idx % 1 == 0:
+		if args.plotting == True and epoch_idx % 1 == 0:
 
 			# keep test and plot based on a single and same image
 			conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits = cnn(torch.unsqueeze(test_images[0], dim=0))
@@ -847,6 +854,7 @@ def build_parser():
 	#########################################################
 	subparser = subparsers.add_parser('train', help='Trains a model for the first time.')
 	# add args to train function
+	subparser.add_argument('-plotting', action='store_true', help='either display or save plotting; with display being true, just display images; if display is false, save plots')
 	subparser.add_argument('-batch_size', type=int, default=50, help="Number of samples in each batch")
 	subparser.add_argument('-num_batches', type=int, default=100, help="Number of batches to train in each epoch")
 	subparser.add_argument('-num_test', type=int, default=1000, help="Number of samples to test during testing")
@@ -866,6 +874,7 @@ def build_parser():
 	# the command line function defined as train_again
 	subparser = subparsers.add_parser('train_again', help='Trains a model.')
 	# add args to train function
+	subparser.add_argument('-plotting', action='store_true', help='either display or save plotting; with display being true, just display images; if display is false, save plots')
 	subparser.add_argument('-batch_size', type=int, default=50, help="Number of samples in each batch")
 	subparser.add_argument('-num_batches', type=int, default=100, help="Number of batches to train in each epoch")
 	subparser.add_argument('-num_test', type=int, default=1000, help="Number of samples to test during testing")
