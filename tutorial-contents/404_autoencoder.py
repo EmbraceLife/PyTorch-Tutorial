@@ -61,7 +61,8 @@ plt.show()
 # Data Loader for easy mini-batch return in training, the image batch shape will be (50, 1, 28, 28)
 train_loader = Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=True)
 
-
+## build autoEncoder class:
+# contain 2 attributes: encoder, decoder (they are Sequential class)
 class AutoEncoder(nn.Module):
     def __init__(self):
         super(AutoEncoder, self).__init__()
@@ -91,7 +92,7 @@ class AutoEncoder(nn.Module):
         decoded = self.decoder(encoded)
         return encoded, decoded
 
-
+# instantiate autoEncoder
 autoencoder = AutoEncoder()
 
 optimizer = torch.optim.Adam(autoencoder.parameters(), lr=LR)
