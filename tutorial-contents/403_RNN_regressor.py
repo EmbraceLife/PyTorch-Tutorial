@@ -62,7 +62,7 @@ class RNN(nn.Module):
         r_out, h_state = self.rnn(x, h_state)
 
 		# How to understand here? every step's output is applied to self.out layer, then stored into a list, then stacked into a tensor with shape (1, 10, 1)
-		# 10 is num of steps 
+		# 10 is num of steps
         outs = []    # save all predictions
         for time_step in range(r_out.size(1)):
 			# calculate output for each time step
@@ -90,12 +90,16 @@ for step in range(60):
     x_np = np.sin(steps)    # float32 for converting torch FloatTensor
     y_np = np.cos(steps)
 
+	## convert a 1-d array to 3d (batch, step, input_size)
+		# add 2 dimensions at 0 and 2 positions
     x = Variable(torch.from_numpy(x_np[np.newaxis, :, np.newaxis]))    # shape (batch, time_step, input_size)
     y = Variable(torch.from_numpy(y_np[np.newaxis, :, np.newaxis]))
 
     prediction, h_state = rnn(x, h_state)   # rnn output
+
     # !! next step is important !!
-    h_state = Variable(h_state.data)        # repack the hidden state, break the connection from last iteration
+	# repack the hidden state, break the connection from last iteration
+    h_state = Variable(h_state.data)
 
     loss = loss_func(prediction, y)         # cross entropy loss
     optimizer.zero_grad()                   # clear gradients for this training step
@@ -105,7 +109,7 @@ for step in range(60):
     # plotting
     plt.plot(steps, y_np.flatten(), 'r-')
     plt.plot(steps, prediction.data.numpy().flatten(), 'b-')
-    plt.draw()
+    # plt.draw() # not really necessary
     plt.pause(0.05)
 
 plt.ioff()
