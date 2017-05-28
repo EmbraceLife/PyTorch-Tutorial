@@ -35,13 +35,16 @@ import numpy as np
 
 torch.manual_seed(1)    # reproducible
 
+###################################
 # Hyper Parameters
-EPOCH = 10
+EPOCH = 1
 BATCH_SIZE = 64
 LR = 0.005         # learning rate
 DOWNLOAD_MNIST = False
 N_TEST_IMG = 5
 
+###################################
+## Load dataset, plot it, and batch them
 # Mnist digits dataset
 train_data = torchvision.datasets.MNIST(
     root='./mnist/',
@@ -61,6 +64,7 @@ plt.show()
 # Data Loader for easy mini-batch return in training, the image batch shape will be (50, 1, 28, 28)
 train_loader = Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=True)
 
+#############################
 ## build autoEncoder class:
 # contain 2 attributes: encoder, decoder (they are Sequential class)
 class AutoEncoder(nn.Module):
@@ -92,27 +96,36 @@ class AutoEncoder(nn.Module):
         decoded = self.decoder(encoded)
         return encoded, decoded
 
+##########################
+## Build graph framework
 # instantiate autoEncoder
 autoencoder = AutoEncoder()
-
 optimizer = torch.optim.Adam(autoencoder.parameters(), lr=LR)
 loss_func = nn.MSELoss()
 
-# initialize figure: another way of subplotting
+
+############################
+## plot the first 5 images as subplots
+# initialize figure: another way of subplotting (2 rows, 5 cols)
 f, a = plt.subplots(2, N_TEST_IMG, figsize=(5, 2))
 plt.ion()   # continuously plot
 plt.show()
 
-# original data (first row) for viewing
+# get N_TEST_IMG (5 here) images data to work on
 view_data = Variable(train_data.train_data[:N_TEST_IMG].view(-1, 28*28).type(torch.FloatTensor)/255.)
 
-# easy and fast way of plotting many subplots on a row
+# easy and fast way of plotting the 5 subplots on a row
 for i in range(N_TEST_IMG):
     a[0][i].imshow(np.reshape(view_data.data.numpy()[i], (28, 28)), cmap='gray')
     a[0][i].set_xticks(())
     a[0][i].set_yticks(())
 
+#########################
+## training
+# for each epoch
 for epoch in range(EPOCH):
+
+	# for each batch, batch x and batch label
     for step, (x, y) in enumerate(train_loader):
 		# first, check x, y, size
 		# x.size(): (64, 1, 28, 28)
@@ -121,20 +134,26 @@ for epoch in range(EPOCH):
         b_x = Variable(x.view(-1, 28*28))
 		# batch y, shape (batch, 28*28)
         b_y = Variable(x.view(-1, 28*28))
+		# batch label
+        b_label = Variable(y)
 
-        b_label = Variable(y)               # batch label
 
+		## actual forward pass
         encoded, decoded = autoencoder(b_x)
-
         loss = loss_func(decoded, b_y)      # mean square error
+
+		## actual backward pass
         optimizer.zero_grad()               # clear gradients for this training step
         loss.backward()                     # backpropagation, compute gradients
         optimizer.step()                    # apply gradients
 
+		## Every 100 batches of training
         if step % 100 == 0:
+
+			# print out loss with epoch index
             print('Epoch: ', epoch, '| train loss: %.4f' % loss.data[0])
 
-            # plotting decoded image (second row)
+            # plotting decoded image (second row) on the first 5 images above
             _, decoded_data = autoencoder(view_data)
             for i in range(N_TEST_IMG):
                 a[1][i].clear()
@@ -147,8 +166,14 @@ for epoch in range(EPOCH):
 plt.ioff()
 plt.show()
 
+
+##########################
 # visualize in 3D plot
+
+## prepare 200 images
 view_data = Variable(train_data.train_data[:200].view(-1, 28*28).type(torch.FloatTensor)/255.)
+
+## encode these 200 images
 encoded_data, _ = autoencoder(view_data)
 
 # create a second plot
