@@ -22,6 +22,9 @@ LR_G = 0.0001           # learning rate for generator
 LR_D = 0.0001           # learning rate for discriminator
 N_IDEAS = 5             # think of this as number of ideas for generating an art work (Generator)
 ART_COMPONENTS = 15     # it could be total point G can draw in the canvas
+
+## create array (64, 15): 64 samples of 15 random paint_points
+# np.vstack: lay a list of arrays vertically
 PAINT_POINTS = np.vstack([np.linspace(-1, 1, ART_COMPONENTS) for _ in range(BATCH_SIZE)])
 
 # show our beautiful painting range
@@ -30,8 +33,9 @@ plt.plot(PAINT_POINTS[0], 1 * np.power(PAINT_POINTS[0], 2) + 0, c='#FF9359', lw=
 plt.legend(loc='upper right')
 plt.show()
 
-
-def artist_works():     # painting from the famous artist (real target)
+# painting from the famous artist (real target)
+# 64 paintings, each is a 15 artistic painting points
+def artist_works():
     a = np.random.uniform(1, 2, size=BATCH_SIZE)[:, np.newaxis]
     paintings = a * np.power(PAINT_POINTS, 2) + (a-1)
     paintings = torch.from_numpy(paintings).float()
@@ -57,17 +61,29 @@ plt.ion()   # something about continuous plotting
 plt.show()
 for step in range(10000):
     artist_paintings = artist_works()           # real painting from artist
-    G_ideas = Variable(torch.randn(BATCH_SIZE, N_IDEAS))    # random ideas
-    G_paintings = G(G_ideas)                    # fake painting from G (random ideas)
+    G_ideas = Variable(torch.randn(BATCH_SIZE, N_IDEAS))    # random ideas of painting by newbie
 
-    prob_artist0 = D(artist_paintings)          # D try to increase this prob
-    prob_artist1 = D(G_paintings)               # D try to reduce this prob
+	# actual fake painting done by newbie G based on random ideas above
+    G_paintings = G(G_ideas)
 
+	# Discriminator will examine the real work from artist
+	# D try to increase this prob, to prove D is a good examiner to tell real artist's work
+    prob_artist0 = D(artist_paintings)
+	## todo: store this probability and plot it
+
+	# D try to reduce this prob to prove D is a good examiner to tell fake or newbie painting
+    prob_artist1 = D(G_paintings)
+	## todo: store this probability and plot it
+
+	# todo: to understand how loss is designed ??
     D_loss = - torch.mean(torch.log(prob_artist0) + torch.log(1. - prob_artist1))
     G_loss = torch.mean(torch.log(1. - prob_artist1))
+	## todo: store these two losses and plot them
 
     opt_D.zero_grad()
-    D_loss.backward(retain_variables=True)      # retain_variables for reusing computational graph
+	# retain_variables for reusing computational graph for G_loss.backward()
+	# todo: how to see the actual different `retain_variables=True` make???
+    D_loss.backward(retain_variables=True)
     opt_D.step()
 
     opt_G.zero_grad()
