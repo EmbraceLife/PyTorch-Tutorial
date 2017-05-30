@@ -1,62 +1,44 @@
-"""
-View more, visit my tutorial page: https://morvanzhou.github.io/tutorials/
-My Youtube Channel: https://www.youtube.com/user/MorvanZhou
-
-Dependencies:
-torch: 0.1.11
-"""
 import torch
 from torch.autograd import Variable
 
-# Variable in torch is to build a computational graph,
-# but this graph is dynamic compared with a static graph in Tensorflow or Theano.
-# So torch does not have placeholder, torch can just pass variable to the computational graph.
+tensor = torch.FloatTensor([[1,2],[3,4]])
 
-tensor = torch.FloatTensor([[1,2],[3,4]])            # build a tensor
-variable = Variable(tensor, requires_grad=True)      # build a variable, usually for compute gradients
+# check var.grad
+variable_false = Variable(tensor) # can't compute gradients
+variable_true = Variable(tensor, requires_grad=True)
 
-print(tensor)       # [torch.FloatTensor of size 2x2]
-print(variable)     # [torch.FloatTensor of size 2x2]
+# add operations
+t_out = torch.mean(tensor*tensor)
 
-# till now the tensor and variable seem the same.
-# However, the variable is a part of the graph, it's a part of the auto-gradient.
+v_out_false = torch.mean(variable_false*variable_false)
+v_out_true = torch.mean(variable_true*variable_true)
 
-t_out = torch.mean(tensor*tensor)       # x^2
+# backpropagation
+# RuntimeError: there are no graph nodes that require computing gradients, due to `requires_grad=False`
+# v_out_false.backward()
+v_out_true.backward()
+print(variable_true.grad)
+print(v_out_true.creator)
 
-# do operation with Variable
-v_out = torch.mean(variable*variable)   # x^2
-print(t_out)
-print(v_out)    # 7.5
+x = Variable(torch.ones(2, 2), requires_grad=True)
+y = x + 2
+print(y.creator)
 
-# to do backward(), v_out must be a scalar
-v_out.backward()    # backpropagation from v_out
-# v_out = 1/4 * sum(variable*variable)
-# the gradients w.r.t the variable, d(v_out)/d(variable) = 1/4*2*variable = variable/2
+z = y * y * 3
+out = z.mean()
+out.backward() # equivalent to out.backward(torch.Tensor([1.0]))
+print(x.grad)
 
-# variable.grad: see gradients or weights 
-print(variable.grad)
-'''
- 0.5000  1.0000
- 1.5000  2.0000
-'''
+x = torch.randn(3)
+x = Variable(x, requires_grad=True)
+y = x * 2
+while y.data.norm() < 1000:
+    y = y * 2
 
-print(variable)     # this is data in variable format
-"""
-Variable containing:
- 1  2
- 3  4
-[torch.FloatTensor of size 2x2]
-"""
-# access tensor from Variable
-print(variable.data)    # this is data in tensor format
-"""
- 1  2
- 3  4
-[torch.FloatTensor of size 2x2]
-"""
-# access numpy array from pytorch tensor
-print(variable.data.numpy())    # numpy format
-"""
-[[ 1.  2.]
- [ 3.  4.]]
-"""
+
+# if grad is scalar, we can use y.backward(), if not, just provide a tensor with same size as gradients
+# with grad value will be multiplied with gradients tensor provided here
+gradients = torch.FloatTensor([0.1, 1.0, 0.0001])
+y.backward(gradients)
+print(x.grad)
+print(gradients)
