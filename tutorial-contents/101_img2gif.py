@@ -43,7 +43,7 @@ def build_parser():
 
 	#########################################################
 	subparser = subparsers.add_parser('img2gif', help='conver images to gif with 3 speeds')
-	subparser.add_argument('-dir', '--img_dir', required=True, help="Path to save plots")
+	subparser.add_argument('-img_dir', required=True, help="Path to save plots")
 	subparser.set_defaults(func=img2gif)
 
 	return parser, subparsers
@@ -64,4 +64,4 @@ if __name__ == '__main__':
 	main()
 
 # run the line below in terminal
-# python 101_img2gif.py -dir dir_images_stored
+# python 101_img2gif.py -img_dir dir_images_stored

@@ -2,6 +2,7 @@ import torch
 from torch.autograd import Variable
 ## my pytorch is latest installed from source
 
+
 tensor = torch.FloatTensor([[1,2],[3,4]])
 variable_false = Variable(tensor) # can't compute gradients
 variable_true = Variable(tensor, requires_grad=True)
@@ -16,6 +17,7 @@ v_out_true = torch.mean(variable_true*variable_true)
 # backpropagation
 v_out_false.backward()
 # RuntimeError: there are no graph nodes that require computing gradients, due to `requires_grad=False`
+# variables ops variables, not directly with tensors
 """
 # to do backward for a second or third time, must keep `retain_variables=True` every time when call backward
 v_out_true.backward(retain_graph=True)
