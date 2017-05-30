@@ -20,13 +20,13 @@ v_out_false.backward()
 v_out_true.backward(retain_variables=True)
 # equivalent to v_out_true.backward(torch.ones(1))
 print(variable_true.grad)
-print(v_out_true.creator)
+print(v_out_true.creator) # future: v_out_true.grad_fn
 v_out_true.backward(retain_variables=True)
 # every time call backward() will change the gradients
 print(variable_true.grad)
-print(v_out_true.creator)
+print(v_out_true.creator) # future: v_out_true.grad_fn
 # use torch.autograd's backward
-v_out_true.backward(torch.ones(1), retain_variables=True)
+v_out_true.backward(torch.ones(1), retain_variables=True) # future: retain_graph=True, create_graph=True
 print(variable_true.grad)
 
 """
