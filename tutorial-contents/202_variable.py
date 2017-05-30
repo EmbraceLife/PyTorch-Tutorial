@@ -1,5 +1,6 @@
 import torch
 from torch.autograd import Variable
+## my pytorch is latest installed from source
 
 tensor = torch.FloatTensor([[1,2],[3,4]])
 variable_false = Variable(tensor) # can't compute gradients
@@ -17,16 +18,16 @@ v_out_false.backward()
 # RuntimeError: there are no graph nodes that require computing gradients, due to `requires_grad=False`
 """
 # to do backward for a second or third time, must keep `retain_variables=True` every time when call backward
-v_out_true.backward(retain_variables=True)
+v_out_true.backward(retain_graph=True)
 # equivalent to v_out_true.backward(torch.ones(1))
 print(variable_true.grad)
-print(v_out_true.creator) # future: v_out_true.grad_fn
-v_out_true.backward(retain_variables=True)
+print(v_out_true.grad_fn) # future: v_out_true.grad_fn
+v_out_true.backward(retain_graph=True)
 # every time call backward() will change the gradients
 print(variable_true.grad)
-print(v_out_true.creator) # future: v_out_true.grad_fn
+print(v_out_true.grad_fn) # future: v_out_true.grad_fn
 # use torch.autograd's backward
-v_out_true.backward(torch.ones(1), retain_variables=True) # future: retain_graph=True, create_graph=True
+v_out_true.backward(torch.ones(1), retain_graph=True) # future: retain_graph=True, create_graph=True
 print(variable_true.grad)
 
 """
@@ -55,5 +56,5 @@ y = x * 2
 gradients = torch.FloatTensor([0.1, 1.0, 0.0001])
 while y.data.norm() < 1000:
     y = y * 2
-    y.backward(gradients, retain_variables=True)
+    y.backward(gradients, retain_graph=True)
     print(x.grad)
