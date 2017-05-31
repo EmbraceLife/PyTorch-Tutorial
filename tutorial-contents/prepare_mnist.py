@@ -117,4 +117,4 @@ if __name__ == '__main__':
 	main()
 
 # run the line below in terminal
-# python 101_img2gif.py -dir dir_images_stored -test_size 100
+# python -m pdb tutorial-contents/401_prepare_mnist.py prepareData -mnist_dir /Users/Natsume/Downloads/morvan_new_pytorch/mnist -batch_size 32 -test_size 100

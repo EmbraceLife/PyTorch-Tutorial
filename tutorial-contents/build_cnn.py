@@ -144,4 +144,4 @@ if __name__ == '__main__':
 	main()
 
 # run the line below in terminal
-# python -m pdb 401_build_nets.py build_net
+# python -m pdb tutorial-contents/401_build_nets.py build_net
