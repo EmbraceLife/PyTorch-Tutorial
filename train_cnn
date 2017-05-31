@@ -23,7 +23,7 @@ def train(args):
 
 	# prepare dataset
 	train_loader, test_images, test_labels = prepareData(args)
-
+	test_labels = Variable(test_labels) # for loss_val
 	# total number of batches of an epoch
 	total_train_samples = train_loader.dataset.train_data.__len__()
 	total_num_batches = int(total_train_samples / args.batch_size)
@@ -31,10 +31,10 @@ def train(args):
 
 	## load rnn or create rnn from scratch
 	if train_again:
-		rnn = torch.load(args.net_path)
+		rnn = torch.load("/Users/Natsume/Downloads/temp_folders/402_train_rnn/net.pkl")
 		optimizer = torch.optim.Adam(rnn.parameters(), lr=0.01)
 		loss_func = nn.CrossEntropyLoss()
-		steps, losses_train, losses_val, accuracies = torch.load(args.log_path)
+		steps, losses_train, losses_val, accuracies = torch.load("/Users/Natsume/Downloads/temp_folders/402_train_rnn/log.pkl")
 		previous_step = steps[-1]
 	else:
 		rnn, optimizer, loss_func = build_net(args)
@@ -62,7 +62,7 @@ def train(args):
 			loss = loss_func(out, b_lab)
 			optimizer.zero_grad()
 			loss.backward()
-			## todo: b_img is required_grad=True right? yes, proved
+			## todo: b_img is required_grad=True right?
 			optimizer.step()
 			# store every batch loss
 			loss_list.append(loss.data.numpy()[0])
@@ -77,7 +77,7 @@ def train(args):
 				loss_list = []
 				losses_train.append(avg_loss_batch_train)
 
-				# rnn takes (batch, step_size, feature_size), cnn takes (batch, 1, img_width, img_height); so need to shrink tensor.size
+				# apply test|validation set to rnn model
 				test_images = torch.squeeze(test_images) # already variable
 				_, _, _, test_output = rnn(test_images)
 				# validation loss
@@ -101,9 +101,8 @@ def train(args):
 	torch.save((steps, losses_train, losses_val, accuracies), args.log_path)
 
 	if plot_loss:
-		plt.plot(steps, losses_train, c='blue', label='train')
-		plt.plot(steps, losses_val, c='red', label='val')
-		plt.legend(loc='best')
+		plt.plot(steps, losses_train, c='blue')
+		plt.plot(steps, losses_val, c='red')
 		plt.show()
 
 #########################################################
@@ -125,8 +124,12 @@ def build_parser():
 	subparser.add_argument('-net', '--net_path', required=True, help="Path to save neuralnet model")
 	subparser.add_argument('-log', '--log_path', required=True, help="Path to save log information: losses, steps")
 	subparser.add_argument('-num_epochs', type=int, default=1, help="Number of epochs to train this time")
-
+	subparser.add_argument('-s', '--selection',
+		choices=['train', 'validate', 'test', 'evaluate', 'auto'],
+		default='auto', help='Try to produce data corresponding to a specific '
+			'variation of the model.')
 	subparser.set_defaults(func=train)
+
 
 	return parser, subparsers
 

@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch.utils.data as Data
 import matplotlib.pyplot as plt
 
-## More flexible way to build Net class
+# build network in flexible way
 class CNN(nn.Module):
 	""" 1. create __init__; 2. create forward()
 	"""
@@ -40,60 +40,25 @@ class CNN(nn.Module):
 
 		return (conv1_relu, conv1_maxpool, conv2_relu, conv2_maxpool, logits)
 
-## Simpler way of build Net class
-class CNN2PP(nn.Module):
-	def __init__(self):
-	    super(CNN2PP, self).__init__()
-
-	    self.conv1 = nn.Sequential(         # input shape (1, 28, 28)
-			# Note: how to calc cnn output shape
-	        nn.Conv2d(
-	            in_channels=1,              # input height
-	            out_channels=16,            # n_filters
-	            kernel_size=5,              # filter size
-	            stride=1,                   # filter movement/step
-	            padding=2,                  # if want same width and length of this image after con2d, padding=(kernel_size-1)/2 if stride=1
-	        ),                              # output shape (16, 28, 28)
-	        nn.ReLU(),                      # activation
-	        nn.MaxPool2d(kernel_size=2),    # choose max value in 2x2 area, output shape (16, 14, 14)
-	    )
-	    self.conv2 = nn.Sequential(         # input shape (1, 28, 28)
-	        nn.Conv2d(16, 32, 5, 1, 2),     # output shape (32, 14, 14)
-	        nn.ReLU(),                      # activation
-	        nn.MaxPool2d(2),                # output shape (32, 7, 7)
-	    )
-	    self.out = nn.Linear(32 * 7 * 7, 10)   # fully connected layer, output 10 classes
-
-		#### How did 14, 7 are calculated?
-
-	def forward(self, x):
-	    conv1 = self.conv1(x)
-	    conv2 = self.conv2(conv1)
-		# flatten the output of conv2 to (batch_size, 32 * 7 * 7)
-	    flat = conv2.view(conv2.size(0), -1)
-		# fully connected layer only take input with 2-d
-	    logits = self.out(flat)
-	    return logits
-
 ######################################################
 def build_net(args):
 	""" Build network: 1. instantiate a net; 2. build a optimizer box and loss box; 3. build net2pp for printing; 4. return (net, optimizer, loss_func, net2pp)
 	"""
 	######################
 	# hyper parameters: can be turned to args.lr, args.opt, args.loss
-	learning_rate = 0.02
+	learning_rate = 0.001
 	optimizer_select = "adam" # or 'momentum', 'adam', 'rmsprop'
 	loss_select = "crossentropy" # or 'mse'
 
 	cnn = CNN()
-	cnn2pp = CNN2PP()
 
 	######################
 	## select an optimizer
 	opt_SGD         = torch.optim.SGD(cnn.parameters(), lr=learning_rate)
 	opt_Momentum    = torch.optim.SGD(cnn.parameters(), lr=learning_rate, momentum=0.8)
 	opt_RMSprop     = torch.optim.RMSprop(cnn.parameters(), lr=learning_rate, alpha=0.9)
-	opt_Adam        = torch.optim.Adam(cnn.parameters(), lr=learning_rate, betas=(0.9, 0.99))
+	opt_Adam        = torch.optim.Adam(cnn.parameters(), lr=learning_rate)
+
 	optimizers = {'sgd':opt_SGD, 'momentum':opt_Momentum, 'rmsprop':opt_RMSprop, 'adam':opt_Adam}
 	# use args.optimizer to select an optimizer to use
 	# use args.lr to set learning rate
@@ -115,7 +80,7 @@ def build_net(args):
 		if loss_select == k:
 			loss_func = v
 
-	return (cnn, optimizer, loss_func, cnn2pp)
+	return (cnn, optimizer, loss_func)
 
 #########################################################
 def build_parser():

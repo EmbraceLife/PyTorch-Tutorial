@@ -8,10 +8,6 @@ import torch.nn.functional as F
 import torch.utils.data as Data
 import matplotlib.pyplot as plt
 
-################################################
-# prepare data
-################################################
-
 def prepareData(args):
 	""" Prepare dataset for training later: 1. create x, y dataset; 2. make batches (shuffle, batch_size) 3. return x_v, y_v, loader
 	"""
@@ -42,7 +38,6 @@ def prepareData(args):
 	# explore train_data
 	dr train_data
 	"""
-
 	###################################
 	## plot the first image with gray scale
 	if do_plot:
@@ -77,7 +72,7 @@ def prepareData(args):
 	# normalize: range 0-1, by /255
 	# don't calc gradient: volatile = True, so speed up process
 	test_images = Variable(torch.unsqueeze(test_data.test_data, dim=1), volatile=True).type(torch.FloatTensor)[:args.test_size]/255.
-	test_labels = test_data.test_labels[:args.test_size]
+	test_labels = Variable(test_data.test_labels)[:args.test_size]
 	print("test_labels: length: {}, type: {}".format(len(test_labels), type(test_labels))) # LongTensor
 
 	return (train_loader, test_images, test_labels)
@@ -116,5 +111,4 @@ def main():
 if __name__ == '__main__':
 	main()
 
-# run the line below in terminal
 # python -m pdb tutorial-contents/401_prepare_mnist.py prepareData -mnist_dir /Users/Natsume/Downloads/morvan_new_pytorch/mnist -batch_size 32 -test_size 100

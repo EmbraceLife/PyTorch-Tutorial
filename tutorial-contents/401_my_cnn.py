@@ -21,7 +21,7 @@ python -m pdb tutorial-contents/401_my_cnn.py prepareData -batch_size 500
 python -m pdb tutorial-contents/401_my_cnn.py build_net
 
 ## just train without plot anything or save any plotting
-python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 1 -num_batches 1 -num_epochs 3 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401
+python -m pdb tutorial-contents/401_my_cnn.py train -batch_size 32 -num_batches 50 -num_epochs 10 -num_test 100 -net /Users/Natsume/Downloads/temp_folders/401/net.pkl -log /Users/Natsume/Downloads/temp_folders/401/log.pkl -plot /Users/Natsume/Downloads/temp_folders/401
 
 
 ## just display every steps in training (no saving plots)
