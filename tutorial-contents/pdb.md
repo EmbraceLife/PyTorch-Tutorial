@@ -1,12 +1,17 @@
-## How to use pdb in python?
+# How to use pdb in python?
+
+## tutorials
 https://www.youtube.com/watch?v=bZZTeKPRSLQ (simple 8 mins)
 https://www.youtube.com/watch?v=P0pIW5tJrRM (in-depth 30 mins)
 https://docs.python.org/3/library/pdb.html#debugger-commands official doc for `pdb`
 https://pypi.python.org/pypi/pdbpp/ official doc for `pdb++`
 - to also use `pdb++`, just install it, then everything is the same as using pdb
-- `from pdb.set_trace as set_trace`
-- `(pdb): l`: to see the next 11 lines
-- `ll`: long list: show the complete function, instead of every 11 lines
+
+## most used pdb
+- `python -m pdb file-name.py`
+- or inside the py file insert `import pdb; pdb.set_trace()` where needed
+- `sticky`: to see the context of codes
+- `ll`: long list: show the complete function
 - `(pdb): l 20`: to start at line 20 and see the next 11 lines
 - `(pdb): l 1, 20`: see line from 1 to 20
 - `(pdb): s`: step into a function
@@ -15,7 +20,6 @@ https://pypi.python.org/pypi/pdbpp/ official doc for `pdb++`
 - `(pdb): b`: see the list of breakpoints we set_trace, and how many times the breakpoint line has been hit
 - `b file.py:41` or `b func_name`
 - `b 11, this_year==2017`: conditional breakpoint, at line 11 to breakpoint, if this_year == 2017
-- `b 20`: set a breakpoint at line 20
 - `cl 1`: clear the first breakpoint (when you want to set a new breakpoint, has to clear the previous one first)
 - `(pdb): r `: run until the current function returns
 - `(pdb): c`: continue to run until the next breakpoint (finished the current block of lines, or finished debugging process, let it run to the end)
@@ -30,28 +34,3 @@ https://pypi.python.org/pypi/pdbpp/ official doc for `pdb++`
 - `interact`: build upon the current env, and build functions even classes with python codes upon it, and check all variables or expressions
 - `pm`: how to use it?
 - `a`: print out list of current function?
-
-### How to make alias in `.bash_profile`?
-- go to home directory: `cd`
-- go inside .bash_profile: `nano .bash_profile`
-- add a line like `alias wk3.5='cd ~/.Downloads; source activate dlnd-tf-lab' `
-- save and exit: `ctrl + x`, `y`, `enter`
-- source to activate: `source .bash_profile`
-- then use `wk3.5` everywhere
-
-### How to make alias for pdb?
-- save the following code inside: `nano ~/.pdbrc`
-- no `source ~./pdbrc` is needed
-
-```bash
-alias dr pp dir(%1)
-alias dt pp %1.__dict__
-alias pdt for k, v in %1.items(): print(k, ": ", v)
-alias loc locals().keys()
-alias doc from inspect import getdoc; from pprint import pprint; pprint(getdoc(%1))
-alias sources from inspect import getsourcelines; from pprint import pprint; pprint(getsourcelines(%1))
-alias module from inspect import getmodule; from pprint import pprint; pprint(getmodule(%1))
-alias fullargs from inspect import getfullargspec; from pprint import pprint; pprint(getfullargspec(%1))
-alias opt_param optimizer.param_groups[0]['params'][%1]
-alias opt_grad optimizer.param_groups[0]['params'][%1].grad
-```
