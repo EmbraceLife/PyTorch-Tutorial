@@ -3,8 +3,10 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
-## apply activations to a 1d variable
+# check functions and attr
 x = torch.linspace(-5, 5, 200)
+
+# look through all attr and methods
 x = Variable(x)
 
 # only variables can be applied with activations
@@ -23,10 +25,19 @@ dt F
 # check out documents of F.softmax
 sources torch.nn.Softmax
 """
+
+#######################################
+## subplotting
+
 x_np = x.data.numpy()
-## plotting activations
+
+# doc
 plt.figure(1, figsize=(5, 3))
+
+# dr, dt plt
+# doc plt.subplot
 plt.subplot(221)
+
 # plot relu
 plt.plot(x_np, y_relu.data.numpy(), c='red', label='relu')
 plt.ylim((-1, 5))
